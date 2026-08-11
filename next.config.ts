@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   // Produce `about/index.html` instead of `about.html` so that Amplify can
   // resolve paths without extension rewriting.
   trailingSlash: true,
+  images: { unoptimized: true }
 };
 
 export default nextConfig;
