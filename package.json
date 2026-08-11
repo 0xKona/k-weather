@@ -1,0 +1,20 @@
+{
+  "name": "k-weather",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "backend:test": "npm run test -w backend",
+    "backend:deploy:test": "npm run cdk -w backend -- deploy kweather-core-test --context stage=test --require-approval never",
+    "backend:deploy:prod": "npm run cdk -w backend -- deploy kweather-core-prod --context stage=prod --require-approval broadening",
+    "frontend:build": "npm run build -w frontend",
+    "frontend:dev": "npm run dev -w frontend",
+    "deploy:test": "npm run build -w frontend && npm run cdk -w backend -- deploy --all --context stage=test --require-approval never",
+    "deploy:prod": "npm run build -w frontend && npm run cdk -w backend -- deploy --all --context stage=prod --require-approval broadening"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1"
+  }
+}
