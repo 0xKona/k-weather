@@ -1,20 +1,24 @@
 {
   "name": "k-weather",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "backend:test": "npm run test -w backend",
-    "backend:deploy:test": "npm run cdk -w backend -- deploy kweather-core-test --context stage=test --require-approval never",
-    "backend:deploy:prod": "npm run cdk -w backend -- deploy kweather-core-prod --context stage=prod --require-approval broadening",
-    "frontend:build": "npm run build -w frontend",
-    "frontend:dev": "npm run dev -w frontend",
-    "deploy:test": "npm run build -w frontend && npm run cdk -w backend -- deploy --all --context stage=test --require-approval never",
-    "deploy:prod": "npm run build -w frontend && npm run cdk -w backend -- deploy --all --context stage=prod --require-approval broadening"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1"
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "typescript": "^5"
   }
 }
