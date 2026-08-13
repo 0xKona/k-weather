@@ -19,7 +19,7 @@ interface UseGlobeRotationReturn {
 export function useGlobeRotation(
   options: UseGlobeRotationOptions = {}
 ): UseGlobeRotationReturn {
-  const { idleSpeed = 0.001, animationDuration = 1.5 } = options;
+  const { idleSpeed = 0.0005, animationDuration = 1.5 } = options;
 
   const groupRef = useRef<THREE.Group>(null);
   const targetQuaternion = useRef(new THREE.Quaternion());
@@ -33,9 +33,23 @@ export function useGlobeRotation(
 
       const { phi, theta } = latLngToSpherical(lat, lng);
 
-      // Target rotation: position the location at the top of the visible horizon
-      const euler = new THREE.Euler(-(Math.PI / 2 - phi), -theta, 0, "YXZ");
-      targetQuaternion.current.setFromEuler(euler);
+      // The point on the unit sphere for this lat/lng (before any globe rotation)
+      // In Three.js: Y is up, phi is from +Y axis, theta is around Y axis
+      const pointDir = new THREE.Vector3(
+        Math.sin(phi) * Math.sin(theta),
+        Math.cos(phi),
+        Math.sin(phi) * Math.cos(theta)
+      );
+
+      // We want this point to end up at the top of the globe (+Y direction)
+      // facing the camera. Compute the rotation that brings pointDir to +Y.
+      const upDir = new THREE.Vector3(0, 1, 0);
+
+      // Quaternion that rotates pointDir onto upDir
+      const rotation = new THREE.Quaternion();
+      rotation.setFromUnitVectors(pointDir.normalize(), upDir);
+
+      targetQuaternion.current.copy(rotation);
 
       // Capture current rotation as start point
       startQuaternion.current.copy(groupRef.current.quaternion);
@@ -43,7 +57,7 @@ export function useGlobeRotation(
       isAnimating.current = true;
       animationProgress.current = 0;
     },
-    [animationDuration]
+    []
   );
 
   useFrame((_, delta) => {
@@ -69,7 +83,7 @@ export function useGlobeRotation(
         eased
       );
     } else {
-      // Idle: slow drift rotation around Y axis
+      // Idle: very slow drift rotation around Y axis
       groupRef.current.rotation.y += idleSpeed * delta;
     }
   });
