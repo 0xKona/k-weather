@@ -86,7 +86,7 @@ describe("WeatherCard", () => {
   describe("styling", () => {
     it("applies glassmorphism styling (check for backdrop-blur class)", () => {
       render(<WeatherCard weather={mockWeather} isLoading={false} />);
-      const card = screen.getByRole("region");
+      const card = screen.getByRole("region").querySelector("[data-slot='card']");
       expect(card).toHaveClass("backdrop-blur-lg");
     });
   });

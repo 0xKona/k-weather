@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useReducedMotion } from "framer-motion";
 import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { searchLocations } from "@/services/geocodingApi";
 import { LocationSuggestions } from "./LocationSuggestions";
 import type { GeocodingResult } from "@/types";
@@ -119,8 +120,8 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
   return (
     <div className="relative w-full max-w-md">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+        <Input
           type="text"
           role="combobox"
           aria-expanded={isOpen}
@@ -131,7 +132,7 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          className="w-full pl-10 pr-4 py-3 bg-transparent backdrop-blur-sm border border-border/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-colors"
+          className="pl-10 py-3 h-11 backdrop-blur-sm bg-transparent border-border/20 focus-visible:ring-accent/50 focus-visible:border-accent/50"
         />
       </div>
       {(isOpen || isLoading) && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { GeocodingResult } from "@/types";
 
 interface LocationSuggestionsProps {
@@ -54,10 +55,10 @@ export function LocationSuggestions({
               <li
                 key={`skeleton-${i}`}
                 data-testid="skeleton-item"
-                className="px-4 py-3"
+                className="px-4 py-3 space-y-1.5"
               >
-                <div className="h-4 w-3/4 rounded bg-muted animate-pulse mb-1" />
-                <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
               </li>
             ))}
           </>

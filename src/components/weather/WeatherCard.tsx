@@ -2,6 +2,8 @@
 
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Wind } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { WeatherResponse } from "@/types";
 import { WeatherIcon } from "./WeatherIcon";
 
@@ -29,17 +31,14 @@ function getConditionText(code: number): string {
 
 function WeatherCardSkeleton() {
   return (
-    <div
-      data-testid="weather-card-skeleton"
-      className="backdrop-blur-lg bg-card/80 border border-border/10 rounded-xl p-6 w-64"
-    >
-      <div className="animate-pulse space-y-4">
-        <div className="h-8 w-8 rounded-full bg-white/10" data-testid="skeleton-icon" />
-        <div className="h-12 w-32 rounded-lg bg-white/10" data-testid="skeleton-temp" />
-        <div className="h-4 w-24 rounded bg-white/10" data-testid="skeleton-condition" />
-        <div className="h-4 w-20 rounded bg-white/10" data-testid="skeleton-wind" />
-      </div>
-    </div>
+    <Card className="w-64 backdrop-blur-lg bg-card/80 border-border/10" data-testid="weather-card-skeleton">
+      <CardContent className="space-y-4">
+        <Skeleton className="size-8 rounded-full" data-testid="skeleton-icon" />
+        <Skeleton className="h-12 w-32" data-testid="skeleton-temp" />
+        <Skeleton className="h-4 w-24" data-testid="skeleton-condition" />
+        <Skeleton className="h-4 w-20" data-testid="skeleton-wind" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -71,28 +70,31 @@ export function WeatherCard({ weather, isLoading }: WeatherCardProps) {
           role="region"
           aria-label="Current weather"
           aria-live="polite"
-          className="backdrop-blur-lg bg-card/80 border border-border/10 rounded-xl p-6 w-64"
           {...animationProps}
         >
-          <div className="flex items-start gap-3">
-            <WeatherIcon
-              weatherCode={weather.current_weather.weathercode}
-              isDay={weather.current_weather.is_day === 1}
-            />
-            <div className="flex flex-col">
-              <span className="text-5xl font-bold text-white">
-                {weather.current_weather.temperature}°C
-              </span>
-              <span className="text-sm text-muted-foreground mt-1">
-                {getConditionText(weather.current_weather.weathercode)}
-              </span>
-            </div>
-          </div>
+          <Card className="w-64 backdrop-blur-lg bg-card/80 border-border/10">
+            <CardContent>
+              <div className="flex items-start gap-3">
+                <WeatherIcon
+                  weatherCode={weather.current_weather.weathercode}
+                  isDay={weather.current_weather.is_day === 1}
+                />
+                <div className="flex flex-col">
+                  <span className="text-5xl font-bold text-foreground">
+                    {weather.current_weather.temperature}°C
+                  </span>
+                  <span className="text-sm text-muted-foreground mt-1">
+                    {getConditionText(weather.current_weather.weathercode)}
+                  </span>
+                </div>
+              </div>
 
-          <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
-            <Wind className="size-4" aria-hidden="true" />
-            <span>{weather.current_weather.windspeed} km/h</span>
-          </div>
+              <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+                <Wind className="size-4" aria-hidden="true" />
+                <span>{weather.current_weather.windspeed} km/h</span>
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
       ) : null}
     </AnimatePresence>
