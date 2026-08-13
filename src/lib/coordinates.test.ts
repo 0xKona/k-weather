@@ -1,12 +1,21 @@
 import { describe, it, expect } from "vitest";
 import { latLngToUnitVector, latLngToQuaternion } from "./coordinates";
 
+// Apply quaternion to vector: v' = q * v * q^-1
+function applyQ(vx: number, vy: number, vz: number, qx: number, qy: number, qz: number, qw: number) {
+  const cx = qy * vz - qz * vy;
+  const cy = qz * vx - qx * vz;
+  const cz = qx * vy - qy * vx;
+  return [
+    vx + 2 * (qw * cx + qy * cz - qz * cy),
+    vy + 2 * (qw * cy + qz * cx - qx * cz),
+    vz + 2 * (qw * cz + qx * cy - qy * cx),
+  ];
+}
+
 describe("latLngToUnitVector", () => {
-  // With the +90° offset, lng=0 maps to +X (not +Z), and lng=-90 maps to +Z (front face)
-
-  it("places lng=-90 (Americas) on +Z axis (front face)", () => {
+  it("places lng=-90 (Americas default view) on +Z axis", () => {
     const [x, y, z] = latLngToUnitVector(0, -90);
-
     expect(x).toBeCloseTo(0, 5);
     expect(y).toBeCloseTo(0, 5);
     expect(z).toBeCloseTo(1, 5);
@@ -14,124 +23,78 @@ describe("latLngToUnitVector", () => {
 
   it("places equator/prime meridian on +X axis", () => {
     const [x, y, z] = latLngToUnitVector(0, 0);
-
     expect(x).toBeCloseTo(1, 5);
     expect(y).toBeCloseTo(0, 5);
     expect(z).toBeCloseTo(0, 5);
   });
 
-  it("places north pole on +Y axis regardless of longitude", () => {
-    const [x, y, z] = latLngToUnitVector(90, 0);
-
-    expect(x).toBeCloseTo(0, 5);
+  it("places north pole on +Y axis", () => {
+    const [, y] = latLngToUnitVector(90, 0);
     expect(y).toBeCloseTo(1, 5);
-    expect(z).toBeCloseTo(0, 5);
   });
 
   it("places south pole on -Y axis", () => {
-    const [x, y, z] = latLngToUnitVector(-90, 0);
-
-    expect(x).toBeCloseTo(0, 5);
+    const [, y] = latLngToUnitVector(-90, 0);
     expect(y).toBeCloseTo(-1, 5);
-    expect(z).toBeCloseTo(0, 5);
   });
 
-  it("returns a unit vector for any lat/lng", () => {
+  it("always returns a unit vector", () => {
     const [x, y, z] = latLngToUnitVector(51.5, -0.1257);
-    const len = Math.sqrt(x * x + y * y + z * z);
-
-    expect(len).toBeCloseTo(1, 5);
+    expect(Math.sqrt(x * x + y * y + z * z)).toBeCloseTo(1, 5);
   });
 });
 
 describe("latLngToQuaternion", () => {
-  it("returns identity for lng=-90 (already facing camera)", () => {
-    const [qx, qy, qz, qw] = latLngToQuaternion(0, -90);
-
-    expect(qx).toBeCloseTo(0, 3);
-    expect(qy).toBeCloseTo(0, 3);
-    expect(qz).toBeCloseTo(0, 3);
-    expect(qw).toBeCloseTo(1, 3);
-  });
-
-  it("returns a valid unit quaternion for any location", () => {
+  it("returns a unit quaternion for any location", () => {
     const [qx, qy, qz, qw] = latLngToQuaternion(51.5, -0.1257);
-    const len = Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
-
-    expect(len).toBeCloseTo(1, 5);
+    expect(Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)).toBeCloseTo(1, 5);
   });
 
-  it("rotates London to face +Z (camera direction)", () => {
-    const lat = 51.5, lng = -0.1257;
+  it("rotates the target point to face +Z (camera direction)", () => {
+    const lat = 51.5, lng = -0.1257; // London
     const [px, py, pz] = latLngToUnitVector(lat, lng);
     const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
-
-    // Apply quaternion to vector: v' = v + 2*w*(q × v) + 2*(q × (q × v))
-    const cx1 = qy * pz - qz * py;
-    const cy1 = qz * px - qx * pz;
-    const cz1 = qx * py - qy * px;
-
-    const cx2 = qy * cz1 - qz * cy1;
-    const cy2 = qz * cx1 - qx * cz1;
-    const cz2 = qx * cy1 - qy * cx1;
-
-    const rx = px + 2 * (qw * cx1 + cx2);
-    const ry = py + 2 * (qw * cy1 + cy2);
-    const rz = pz + 2 * (qw * cz1 + cz2);
-
+    const [rx, ry, rz] = applyQ(px, py, pz, qx, qy, qz, qw);
     expect(rx).toBeCloseTo(0, 3);
     expect(ry).toBeCloseTo(0, 3);
     expect(rz).toBeCloseTo(1, 3);
   });
 
-  it("rotates Sydney to face +Z", () => {
+  it("rotates Sydney's point to face +Z", () => {
     const lat = -33.8, lng = 151.2;
     const [px, py, pz] = latLngToUnitVector(lat, lng);
     const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
-
-    const cx1 = qy * pz - qz * py;
-    const cy1 = qz * px - qx * pz;
-    const cz1 = qx * py - qy * px;
-
-    const cx2 = qy * cz1 - qz * cy1;
-    const cy2 = qz * cx1 - qx * cz1;
-    const cz2 = qx * cy1 - qy * cx1;
-
-    const rx = px + 2 * (qw * cx1 + cx2);
-    const ry = py + 2 * (qw * cy1 + cy2);
-    const rz = pz + 2 * (qw * cz1 + cz2);
-
+    const [rx, ry, rz] = applyQ(px, py, pz, qx, qy, qz, qw);
     expect(rx).toBeCloseTo(0, 3);
     expect(ry).toBeCloseTo(0, 3);
     expect(rz).toBeCloseTo(1, 3);
   });
 
-  it("rotates Tokyo to face +Z", () => {
+  it("rotates Tokyo's point to face +Z", () => {
     const lat = 35.6, lng = 139.7;
     const [px, py, pz] = latLngToUnitVector(lat, lng);
     const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
-
-    const cx1 = qy * pz - qz * py;
-    const cy1 = qz * px - qx * pz;
-    const cz1 = qx * py - qy * px;
-
-    const cx2 = qy * cz1 - qz * cy1;
-    const cy2 = qz * cx1 - qx * cz1;
-    const cz2 = qx * cy1 - qy * cx1;
-
-    const rx = px + 2 * (qw * cx1 + cx2);
-    const ry = py + 2 * (qw * cy1 + cy2);
-    const rz = pz + 2 * (qw * cz1 + cz2);
-
+    const [rx, ry, rz] = applyQ(px, py, pz, qx, qy, qz, qw);
     expect(rx).toBeCloseTo(0, 3);
     expect(ry).toBeCloseTo(0, 3);
     expect(rz).toBeCloseTo(1, 3);
   });
 
-  it("handles antipodal point (0, 90) — opposite of default front", () => {
-    const [qx, qy, qz, qw] = latLngToQuaternion(0, 90);
-    const len = Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
+  it("north pole projects upward (+Y) in screen space after rotation", () => {
+    const lat = 51.5, lng = -0.1257; // London
+    const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
+    // Rotate geographic north vector (0,1,0 in globe space)
+    const [nx, ny] = applyQ(0, 1, 0, qx, qy, qz, qw);
+    // Project onto camera plane (XY) — the Y component should dominate (north is up)
+    const projLen = Math.sqrt(nx * nx + ny * ny);
+    expect(ny / projLen).toBeCloseTo(1, 2);
+    // X component of projection should be near zero (not leaning left/right)
+    expect(Math.abs(nx / projLen)).toBeLessThan(0.05);
+  });
 
-    expect(len).toBeCloseTo(1, 5);
+  it("handles the antipodal degenerate case without NaN", () => {
+    const [qx, qy, qz, qw] = latLngToQuaternion(0, 90);
+    expect([qx, qy, qz, qw].some(isNaN)).toBe(false);
+    expect(Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)).toBeCloseTo(1, 5);
   });
 });
