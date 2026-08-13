@@ -1,72 +1,56 @@
-import type { SphericalCoordinates } from "@/types";
-
 const DEG_TO_RAD = Math.PI / 180;
 
-// Convert latitude/longitude to spherical coordinates for Three.js globe rotation
-export function latLngToSpherical(lat: number, lng: number): SphericalCoordinates {
-  // phi: polar angle from north pole (0 = north pole, PI = south pole)
-  const phi = Math.PI / 2 - lat * DEG_TO_RAD;
-  // theta: azimuthal angle from prime meridian
-  const theta = lng * DEG_TO_RAD;
+// Three.js SphereGeometry UV mapping:
+// The texture wraps with U=0 at the -X/+Z seam, meaning the front face (+Z toward camera)
+// shows the texture at U=0.5. For a standard equirectangular Earth map, this puts
+// longitude -90° at the front. We offset by +90° so that our geographic longitude
+// correctly maps to the sphere's actual geometry.
+const LNG_OFFSET = 90;
 
-  return { phi, theta };
+// Convert lat/lng to the position of that point on a unit sphere (Y-up).
+export function latLngToUnitVector(lat: number, lng: number): [number, number, number] {
+  const phi = lat * DEG_TO_RAD;
+  const theta = (lng + LNG_OFFSET) * DEG_TO_RAD;
+
+  const x = Math.cos(phi) * Math.sin(theta);
+  const y = Math.sin(phi);
+  const z = Math.cos(phi) * Math.cos(theta);
+
+  return [x, y, z];
 }
 
-interface Vec3 {
-  x: number;
-  y: number;
-  z: number;
-}
+// Returns a quaternion [x, y, z, w] that rotates the globe so that the given
+// lat/lng faces the camera (camera looks down -Z, so front of globe is +Z).
+// Uses setFromUnitVectors approach: quaternion FROM pointVec TO (0, 0, 1).
+export function latLngToQuaternion(lat: number, lng: number): [number, number, number, number] {
+  const [px, py, pz] = latLngToUnitVector(lat, lng);
 
-// Calculate approximate sun direction vector for day/night terminator
-export function calculateSunDirection(date: Date): Vec3 {
-  const dayOfYear = getDayOfYear(date);
-  const hourUTC = date.getUTCHours() + date.getUTCMinutes() / 60;
+  // Target direction: face camera at +Z
+  // Quaternion from vector A to vector B: q = (A × B, A · B + 1), normalized
+  const cx = py * 1 - pz * 0; // cross with (0, 0, 1)
+  const cy = pz * 0 - px * 1;
+  const cz = px * 0 - py * 0;
+  const dot = pz; // dot with (0, 0, 1)
 
-  // Solar declination (approximate, varies ±23.44° over the year)
-  const declination = -23.44 * Math.cos((360 / 365) * (dayOfYear + 10) * DEG_TO_RAD) * DEG_TO_RAD;
+  let qx = cx;
+  let qy = cy;
+  let qz = cz;
+  let qw = dot + 1;
 
-  // Hour angle: sun is at lng=0 at noon UTC, rotates 15°/hour
-  const hourAngle = (hourUTC - 12) * 15 * DEG_TO_RAD;
-
-  // Convert to cartesian unit vector (sun direction in world space)
-  const x = Math.cos(declination) * Math.cos(hourAngle);
-  const y = Math.sin(declination);
-  const z = Math.cos(declination) * Math.sin(hourAngle);
-
-  return { x, y, z };
-}
-
-// Get UTC offset in hours for a timezone string
-export function getTimezoneOffset(timezone: string): number {
-  try {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      timeZoneName: "shortOffset",
-    });
-
-    const parts = formatter.formatToParts(now);
-    const tzPart = parts.find((p) => p.type === "timeZoneName");
-
-    if (!tzPart) return 0;
-
-    // Format is "GMT+9", "GMT-5", "GMT" etc.
-    const match = tzPart.value.match(/GMT([+-]\d+)?/);
-
-    if (!match) return 0;
-    if (!match[1]) return 0;
-
-    return parseInt(match[1], 10);
-  } catch {
-    return 0;
+  // Degenerate case: point is exactly at (0, 0, -1)
+  if (qw < 0.000001) {
+    qx = 0;
+    qy = 1;
+    qz = 0;
+    qw = 0;
   }
-}
 
-// Calculate the day of the year (1-365)
-function getDayOfYear(date: Date): number {
-  const start = new Date(date.getFullYear(), 0, 0);
-  const diff = date.getTime() - start.getTime();
-  const oneDay = 1000 * 60 * 60 * 24;
-  return Math.floor(diff / oneDay);
+  // Normalize
+  const len = Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
+  qx /= len;
+  qy /= len;
+  qz /= len;
+  qw /= len;
+
+  return [qx, qy, qz, qw];
 }

@@ -1,73 +1,52 @@
 "use client";
 
-import { Suspense, useEffect, useRef } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Suspense, useRef, useEffect } from "react";
+import { Canvas } from "@react-three/fiber";
 import { Preload } from "@react-three/drei";
 import * as THREE from "three";
-import { Earth } from "./Earth";
-import { Atmosphere } from "./Atmosphere";
-import { Stars } from "./Stars";
-import { useGlobeRotation } from "@/hooks/useGlobeRotation";
-import { useDayNightCycle } from "@/hooks/useDayNightCycle";
+import { Globe } from "./Globe";
+import { latLngToQuaternion, latLngToUnitVector } from "@/lib/coordinates";
 
 interface GlobeSceneProps {
   targetLat?: number | null;
   targetLng?: number | null;
 }
 
-// Globe radius — massive so it extends beyond viewport edges
-const GLOBE_RADIUS = 45;
+const GLOBE_RADIUS = 2;
 
-// Globe center positioned far below camera so only the curved horizon is visible
-const GLOBE_Y_OFFSET = -40;
-
-// Camera setup for ISS perspective — fixed, no orbit controls
-function CameraSetup() {
-  const { camera } = useThree();
-  const initialized = useRef(false);
+function GlobeGroup({ targetLat, targetLng }: { targetLat: number | null; targetLng: number | null }) {
+  const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    if (!groupRef.current) return;
+    if (targetLat == null || targetLng == null) {
+      groupRef.current.quaternion.identity();
+      return;
+    }
 
-    camera.position.set(0, 12, 8);
-    camera.lookAt(new THREE.Vector3(0, GLOBE_Y_OFFSET + GLOBE_RADIUS, 0));
-    camera.updateProjectionMatrix();
-  }, [camera]);
+    const [qx, qy, qz, qw] = latLngToQuaternion(targetLat, targetLng);
+    groupRef.current.quaternion.set(qx, qy, qz, qw);
+  }, [targetLat, targetLng]);
 
-  return null;
-}
-
-// Inner scene content — must be inside Canvas to use R3F hooks
-function SceneContent({ targetLat, targetLng }: GlobeSceneProps) {
-  const { groupRef, rotateTo } = useGlobeRotation();
-  const sunDirection = useDayNightCycle();
-  const prevCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
-
-  // Trigger rotation only when coordinates actually change
-  useEffect(() => {
-    if (targetLat == null || targetLng == null) return;
-
-    const prev = prevCoordsRef.current;
-    if (prev && prev.lat === targetLat && prev.lng === targetLng) return;
-
-    prevCoordsRef.current = { lat: targetLat, lng: targetLng };
-    rotateTo(targetLat, targetLng);
-  }, [targetLat, targetLng, rotateTo]);
+  // Debug pin position (in local/unrotated space)
+  const pinPosition = targetLat != null && targetLng != null
+    ? latLngToUnitVector(targetLat, targetLng).map(v => v * (GLOBE_RADIUS + 0.05)) as [number, number, number]
+    : null;
 
   return (
-    <>
-      <CameraSetup />
-      <Stars />
-      <group ref={groupRef} position={[0, GLOBE_Y_OFFSET, 0]}>
-        <Earth radius={GLOBE_RADIUS} sunDirection={sunDirection} />
-        <Atmosphere radius={GLOBE_RADIUS} />
-      </group>
-    </>
+    <group ref={groupRef}>
+      <Globe radius={GLOBE_RADIUS} />
+      {/* Red debug pin at the target location */}
+      {pinPosition && (
+        <mesh position={pinPosition}>
+          <sphereGeometry args={[0.05, 16, 16]} />
+          <meshBasicMaterial color="red" />
+        </mesh>
+      )}
+    </group>
   );
 }
 
-// Full-viewport R3F Canvas with ISS-perspective camera
 export function GlobeScene({ targetLat = null, targetLng = null }: GlobeSceneProps) {
   return (
     <div className="absolute inset-0 w-full h-full" aria-hidden="true">
@@ -75,15 +54,17 @@ export function GlobeScene({ targetLat = null, targetLng = null }: GlobeScenePro
         camera={{
           fov: 45,
           near: 0.1,
-          far: 500,
-          position: [0, 12, 8],
+          far: 100,
+          position: [0, 0, 5],
         }}
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: false }}
         style={{ background: "#000000" }}
       >
+        <ambientLight intensity={0.3} />
+        <directionalLight position={[5, 3, 5]} intensity={1.5} />
         <Suspense fallback={null}>
-          <SceneContent targetLat={targetLat} targetLng={targetLng} />
+          <GlobeGroup targetLat={targetLat} targetLng={targetLng} />
           <Preload all />
         </Suspense>
       </Canvas>

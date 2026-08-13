@@ -1,116 +1,137 @@
 import { describe, it, expect } from "vitest";
-import {
-  latLngToSpherical,
-  calculateSunDirection,
-  getTimezoneOffset,
-} from "./coordinates";
+import { latLngToUnitVector, latLngToQuaternion } from "./coordinates";
 
-describe("latLngToSpherical", () => {
-  it("converts equator/prime meridian to correct spherical coords", () => {
-    const result = latLngToSpherical(0, 0);
+describe("latLngToUnitVector", () => {
+  // With the +90° offset, lng=0 maps to +X (not +Z), and lng=-90 maps to +Z (front face)
 
-    // At lat=0, lng=0: phi = PI/2 (equator), theta = 0
-    expect(result.phi).toBeCloseTo(Math.PI / 2, 5);
-    expect(result.theta).toBeCloseTo(0, 5);
+  it("places lng=-90 (Americas) on +Z axis (front face)", () => {
+    const [x, y, z] = latLngToUnitVector(0, -90);
+
+    expect(x).toBeCloseTo(0, 5);
+    expect(y).toBeCloseTo(0, 5);
+    expect(z).toBeCloseTo(1, 5);
   });
 
-  it("converts north pole to phi=0", () => {
-    const result = latLngToSpherical(90, 0);
+  it("places equator/prime meridian on +X axis", () => {
+    const [x, y, z] = latLngToUnitVector(0, 0);
 
-    // North pole: phi = 0
-    expect(result.phi).toBeCloseTo(0, 5);
+    expect(x).toBeCloseTo(1, 5);
+    expect(y).toBeCloseTo(0, 5);
+    expect(z).toBeCloseTo(0, 5);
   });
 
-  it("converts south pole to phi=PI", () => {
-    const result = latLngToSpherical(-90, 0);
+  it("places north pole on +Y axis regardless of longitude", () => {
+    const [x, y, z] = latLngToUnitVector(90, 0);
 
-    // South pole: phi = PI
-    expect(result.phi).toBeCloseTo(Math.PI, 5);
+    expect(x).toBeCloseTo(0, 5);
+    expect(y).toBeCloseTo(1, 5);
+    expect(z).toBeCloseTo(0, 5);
   });
 
-  it("converts longitude 90E to theta=PI/2", () => {
-    const result = latLngToSpherical(0, 90);
+  it("places south pole on -Y axis", () => {
+    const [x, y, z] = latLngToUnitVector(-90, 0);
 
-    expect(result.theta).toBeCloseTo(Math.PI / 2, 5);
+    expect(x).toBeCloseTo(0, 5);
+    expect(y).toBeCloseTo(-1, 5);
+    expect(z).toBeCloseTo(0, 5);
   });
 
-  it("converts longitude 180 to theta=PI", () => {
-    const result = latLngToSpherical(0, 180);
+  it("returns a unit vector for any lat/lng", () => {
+    const [x, y, z] = latLngToUnitVector(51.5, -0.1257);
+    const len = Math.sqrt(x * x + y * y + z * z);
 
-    expect(result.theta).toBeCloseTo(Math.PI, 5);
-  });
-
-  it("converts negative longitude correctly", () => {
-    const result = latLngToSpherical(0, -90);
-
-    expect(result.theta).toBeCloseTo(-Math.PI / 2, 5);
-  });
-
-  it("converts London coordinates", () => {
-    const result = latLngToSpherical(51.5, -0.1257);
-
-    // lat 51.5 → phi = PI/2 - 51.5*(PI/180)
-    const expectedPhi = Math.PI / 2 - (51.5 * Math.PI) / 180;
-    const expectedTheta = (-0.1257 * Math.PI) / 180;
-
-    expect(result.phi).toBeCloseTo(expectedPhi, 5);
-    expect(result.theta).toBeCloseTo(expectedTheta, 5);
+    expect(len).toBeCloseTo(1, 5);
   });
 });
 
-describe("calculateSunDirection", () => {
-  it("returns a normalised 3D vector", () => {
-    const date = new Date("2026-06-21T12:00:00Z");
-    const sun = calculateSunDirection(date);
+describe("latLngToQuaternion", () => {
+  it("returns identity for lng=-90 (already facing camera)", () => {
+    const [qx, qy, qz, qw] = latLngToQuaternion(0, -90);
 
-    // Should be unit length
-    const length = Math.sqrt(sun.x ** 2 + sun.y ** 2 + sun.z ** 2);
-    expect(length).toBeCloseTo(1, 4);
+    expect(qx).toBeCloseTo(0, 3);
+    expect(qy).toBeCloseTo(0, 3);
+    expect(qz).toBeCloseTo(0, 3);
+    expect(qw).toBeCloseTo(1, 3);
   });
 
-  it("sun is in positive x direction at noon UTC on equinox", () => {
-    // March equinox, noon UTC — sun should be roughly at lng=0 (positive x)
-    const date = new Date("2026-03-20T12:00:00Z");
-    const sun = calculateSunDirection(date);
+  it("returns a valid unit quaternion for any location", () => {
+    const [qx, qy, qz, qw] = latLngToQuaternion(51.5, -0.1257);
+    const len = Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
 
-    expect(sun.x).toBeGreaterThan(0.8);
+    expect(len).toBeCloseTo(1, 5);
   });
 
-  it("sun is in negative x direction at midnight UTC on equinox", () => {
-    // Midnight UTC — sun should be on the opposite side
-    const date = new Date("2026-03-20T00:00:00Z");
-    const sun = calculateSunDirection(date);
+  it("rotates London to face +Z (camera direction)", () => {
+    const lat = 51.5, lng = -0.1257;
+    const [px, py, pz] = latLngToUnitVector(lat, lng);
+    const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
 
-    expect(sun.x).toBeLessThan(-0.8);
+    // Apply quaternion to vector: v' = v + 2*w*(q × v) + 2*(q × (q × v))
+    const cx1 = qy * pz - qz * py;
+    const cy1 = qz * px - qx * pz;
+    const cz1 = qx * py - qy * px;
+
+    const cx2 = qy * cz1 - qz * cy1;
+    const cy2 = qz * cx1 - qx * cz1;
+    const cz2 = qx * cy1 - qy * cx1;
+
+    const rx = px + 2 * (qw * cx1 + cx2);
+    const ry = py + 2 * (qw * cy1 + cy2);
+    const rz = pz + 2 * (qw * cz1 + cz2);
+
+    expect(rx).toBeCloseTo(0, 3);
+    expect(ry).toBeCloseTo(0, 3);
+    expect(rz).toBeCloseTo(1, 3);
   });
 
-  it("sun direction changes with time of day", () => {
-    const morning = calculateSunDirection(new Date("2026-06-21T06:00:00Z"));
-    const noon = calculateSunDirection(new Date("2026-06-21T12:00:00Z"));
+  it("rotates Sydney to face +Z", () => {
+    const lat = -33.8, lng = 151.2;
+    const [px, py, pz] = latLngToUnitVector(lat, lng);
+    const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
 
-    // Different times should produce different directions
-    expect(morning.x).not.toBeCloseTo(noon.x, 1);
-  });
-});
+    const cx1 = qy * pz - qz * py;
+    const cy1 = qz * px - qx * pz;
+    const cz1 = qx * py - qy * px;
 
-describe("getTimezoneOffset", () => {
-  it("returns 0 for UTC", () => {
-    expect(getTimezoneOffset("UTC")).toBe(0);
-  });
+    const cx2 = qy * cz1 - qz * cy1;
+    const cy2 = qz * cx1 - qx * cz1;
+    const cz2 = qx * cy1 - qy * cx1;
 
-  it("returns a number for valid timezone strings", () => {
-    const offset = getTimezoneOffset("Europe/London");
-    expect(typeof offset).toBe("number")
-  });
+    const rx = px + 2 * (qw * cx1 + cx2);
+    const ry = py + 2 * (qw * cy1 + cy2);
+    const rz = pz + 2 * (qw * cz1 + cz2);
 
-  it("returns offset for timezone ahead of UTC", () => {
-    // Tokyo is UTC+9
-    const offset = getTimezoneOffset("Asia/Tokyo");
-    expect(offset).toBe(9);
+    expect(rx).toBeCloseTo(0, 3);
+    expect(ry).toBeCloseTo(0, 3);
+    expect(rz).toBeCloseTo(1, 3);
   });
 
-  it("returns 0 for invalid timezone strings", () => {
-    const offset = getTimezoneOffset("Invalid/Timezone");
-    expect(offset).toBe(0);
+  it("rotates Tokyo to face +Z", () => {
+    const lat = 35.6, lng = 139.7;
+    const [px, py, pz] = latLngToUnitVector(lat, lng);
+    const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
+
+    const cx1 = qy * pz - qz * py;
+    const cy1 = qz * px - qx * pz;
+    const cz1 = qx * py - qy * px;
+
+    const cx2 = qy * cz1 - qz * cy1;
+    const cy2 = qz * cx1 - qx * cz1;
+    const cz2 = qx * cy1 - qy * cx1;
+
+    const rx = px + 2 * (qw * cx1 + cx2);
+    const ry = py + 2 * (qw * cy1 + cy2);
+    const rz = pz + 2 * (qw * cz1 + cz2);
+
+    expect(rx).toBeCloseTo(0, 3);
+    expect(ry).toBeCloseTo(0, 3);
+    expect(rz).toBeCloseTo(1, 3);
+  });
+
+  it("handles antipodal point (0, 90) — opposite of default front", () => {
+    const [qx, qy, qz, qw] = latLngToQuaternion(0, 90);
+    const len = Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
+
+    expect(len).toBeCloseTo(1, 5);
   });
 });
