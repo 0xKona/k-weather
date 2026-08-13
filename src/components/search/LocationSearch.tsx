@@ -2,8 +2,9 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useReducedMotion } from "framer-motion";
-import { Search } from "lucide-react";
+import { Search, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { searchLocations } from "@/services/geocodingApi";
 import { LocationSuggestions } from "./LocationSuggestions";
 import type { GeocodingResult } from "@/types";
@@ -74,8 +75,23 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
     [onLocationSelect]
   );
 
+  // Submit: select active suggestion, or first suggestion if none active
+  const handleSubmit = useCallback(() => {
+    if (activeIndex >= 0 && activeIndex < suggestions.length) {
+      handleSelect(suggestions[activeIndex]);
+    } else if (suggestions.length > 0) {
+      handleSelect(suggestions[0]);
+    }
+  }, [activeIndex, suggestions, handleSelect]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleSubmit();
+        return;
+      }
+
       if (!isOpen) return;
 
       switch (e.key) {
@@ -89,12 +105,6 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
           e.preventDefault();
           setActiveIndex((prev) => (prev > 0 ? prev - 1 : prev));
           break;
-        case "Enter":
-          e.preventDefault();
-          if (activeIndex >= 0 && activeIndex < suggestions.length) {
-            handleSelect(suggestions[activeIndex]);
-          }
-          break;
         case "Escape":
           e.preventDefault();
           setIsOpen(false);
@@ -102,7 +112,7 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
           break;
       }
     },
-    [isOpen, activeIndex, suggestions, handleSelect]
+    [isOpen, suggestions, handleSubmit]
   );
 
   // Cleanup debounce on unmount
@@ -119,8 +129,17 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
 
   return (
     <div className="relative w-full max-w-md">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+      {(isOpen || isLoading) && (
+        <LocationSuggestions
+          suggestions={suggestions}
+          isLoading={isLoading}
+          activeIndex={activeIndex}
+          onSelect={handleSelect}
+          listboxId={listboxId}
+        />
+      )}
+      <div className="relative flex items-center">
+        <Search className="absolute left-3 size-4 text-muted-foreground pointer-events-none" />
         <Input
           type="text"
           role="combobox"
@@ -132,18 +151,20 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          className="pl-10 py-3 h-11 backdrop-blur-sm bg-transparent border-border/20 focus-visible:ring-accent/50 focus-visible:border-accent/50"
+          className="pl-10 pr-12 py-3 h-11 backdrop-blur-sm bg-transparent border-border/20 focus-visible:ring-accent/50 focus-visible:border-accent/50"
         />
+        <Button
+          type="button"
+          variant="default"
+          size="icon-sm"
+          onClick={handleSubmit}
+          disabled={suggestions.length === 0}
+          aria-label="Submit search"
+          className="absolute right-1.5"
+        >
+          <ArrowUp className="size-4" />
+        </Button>
       </div>
-      {(isOpen || isLoading) && (
-        <LocationSuggestions
-          suggestions={suggestions}
-          isLoading={isLoading}
-          activeIndex={activeIndex}
-          onSelect={handleSelect}
-          listboxId={listboxId}
-        />
-      )}
     </div>
   );
 }

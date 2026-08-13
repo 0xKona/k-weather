@@ -16,10 +16,10 @@ interface GlobeSceneProps {
 }
 
 // Globe radius — massive so it extends beyond viewport edges
-const GLOBE_RADIUS = 50;
+const GLOBE_RADIUS = 45;
 
 // Globe center positioned far below camera so only the curved horizon is visible
-const GLOBE_Y_OFFSET = -46;
+const GLOBE_Y_OFFSET = -40;
 
 // Camera setup for ISS perspective
 function CameraSetup() {

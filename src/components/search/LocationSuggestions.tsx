@@ -21,7 +21,7 @@ const listVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: -4 },
+  hidden: { opacity: 0, y: 4 },
   visible: { opacity: 1, y: 0 },
 };
 
@@ -42,7 +42,7 @@ export function LocationSuggestions({
     <motion.ul
       role="listbox"
       id={listboxId}
-      className="absolute top-full left-0 right-0 mt-2 backdrop-blur-md bg-popover/90 border border-border rounded-lg overflow-hidden z-50"
+      className="absolute bottom-full left-0 right-0 mb-2 backdrop-blur-md bg-popover/90 border border-border rounded-lg overflow-hidden z-50"
       variants={shouldReduceMotion ? undefined : listVariants}
       initial="hidden"
       animate="visible"

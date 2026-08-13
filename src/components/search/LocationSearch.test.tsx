@@ -158,6 +158,38 @@ describe("LocationSearch", () => {
     expect(onLocationSelect).toHaveBeenCalledWith(mockResults[0]);
   });
 
+  it("Enter submits first suggestion when none is actively selected", async () => {
+    const onLocationSelect = vi.fn();
+    const user = userEvent.setup({
+      advanceTimers: vi.advanceTimersByTime.bind(vi),
+    });
+    render(<LocationSearch onLocationSelect={onLocationSelect} />);
+    const input = screen.getByRole("combobox");
+
+    await typeAndDebounce(user, input, "London");
+
+    // No ArrowDown — press Enter directly
+    await user.keyboard("{Enter}");
+
+    expect(onLocationSelect).toHaveBeenCalledWith(mockResults[0]);
+  });
+
+  it("renders a submit button that selects first suggestion on click", async () => {
+    const onLocationSelect = vi.fn();
+    const user = userEvent.setup({
+      advanceTimers: vi.advanceTimersByTime.bind(vi),
+    });
+    render(<LocationSearch onLocationSelect={onLocationSelect} />);
+    const input = screen.getByRole("combobox");
+
+    await typeAndDebounce(user, input, "London");
+
+    const submitButton = screen.getByRole("button", { name: /submit search/i });
+    await user.click(submitButton);
+
+    expect(onLocationSelect).toHaveBeenCalledWith(mockResults[0]);
+  });
+
   it("closes suggestions on Escape", async () => {
     const user = userEvent.setup({
       advanceTimers: vi.advanceTimersByTime.bind(vi),
