@@ -10,6 +10,7 @@ import { WeatherIcon } from "./WeatherIcon";
 interface WeatherCardProps {
   weather: WeatherResponse | null;
   isLoading: boolean;
+  animationDelay?: number;
 }
 
 // Maps WMO weather codes to human-readable condition text
@@ -42,7 +43,7 @@ function WeatherCardSkeleton() {
   );
 }
 
-export function WeatherCard({ weather, isLoading }: WeatherCardProps) {
+export function WeatherCard({ weather, isLoading, animationDelay = 0 }: WeatherCardProps) {
   const shouldReduceMotion = useReducedMotion();
 
   if (!weather && !isLoading) {
@@ -55,7 +56,7 @@ export function WeatherCard({ weather, isLoading }: WeatherCardProps) {
         initial: { opacity: 0, y: 20 },
         animate: { opacity: 1, y: 0 },
         exit: { opacity: 0, y: -20 },
-        transition: { duration: 0.3, ease: "easeOut" },
+        transition: { duration: 0.3, ease: "easeOut" as const, delay: animationDelay },
       };
 
   return (

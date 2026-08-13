@@ -5,9 +5,10 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 interface LocationTitleProps {
   locationName: string | null;
   country: string | null;
+  animationDelay?: number;
 }
 
-export function LocationTitle({ locationName, country }: LocationTitleProps) {
+export function LocationTitle({ locationName, country, animationDelay = 0 }: LocationTitleProps) {
   const shouldReduceMotion = useReducedMotion();
 
   if (!locationName) return null;
@@ -26,7 +27,7 @@ export function LocationTitle({ locationName, country }: LocationTitleProps) {
 
   const transition = shouldReduceMotion
     ? { duration: 0 }
-    : { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] };
+    : { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] as const, delay: animationDelay };
 
   return (
     <AnimatePresence mode="wait">
