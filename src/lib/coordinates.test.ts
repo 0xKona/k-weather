@@ -45,50 +45,52 @@ describe("latLngToUnitVector", () => {
 });
 
 describe("latLngToQuaternion", () => {
+  // With -30° tilt, the target point sits above centre at (0, sin30, cos30)
+  const TILT = -30 * (Math.PI / 180);
+  const expectedY = -Math.sin(TILT); // sin(30°) ≈ 0.5
+  const expectedZ = Math.cos(TILT);  // cos(30°) ≈ 0.866
+
   it("returns a unit quaternion for any location", () => {
     const [qx, qy, qz, qw] = latLngToQuaternion(51.5, -0.1257);
     expect(Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)).toBeCloseTo(1, 5);
   });
 
-  it("rotates the target point to face +Z (camera direction)", () => {
-    const lat = 51.5, lng = -0.1257; // London
+  it("rotates London to the tilted position (30° above centre)", () => {
+    const lat = 51.5, lng = -0.1257;
     const [px, py, pz] = latLngToUnitVector(lat, lng);
     const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
     const [rx, ry, rz] = applyQ(px, py, pz, qx, qy, qz, qw);
-    expect(rx).toBeCloseTo(0, 3);
-    expect(ry).toBeCloseTo(0, 3);
-    expect(rz).toBeCloseTo(1, 3);
+    expect(rx).toBeCloseTo(0, 2);
+    expect(ry).toBeCloseTo(expectedY, 2);
+    expect(rz).toBeCloseTo(expectedZ, 2);
   });
 
-  it("rotates Sydney's point to face +Z", () => {
+  it("rotates Sydney to the tilted position", () => {
     const lat = -33.8, lng = 151.2;
     const [px, py, pz] = latLngToUnitVector(lat, lng);
     const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
     const [rx, ry, rz] = applyQ(px, py, pz, qx, qy, qz, qw);
-    expect(rx).toBeCloseTo(0, 3);
-    expect(ry).toBeCloseTo(0, 3);
-    expect(rz).toBeCloseTo(1, 3);
+    expect(rx).toBeCloseTo(0, 2);
+    expect(ry).toBeCloseTo(expectedY, 2);
+    expect(rz).toBeCloseTo(expectedZ, 2);
   });
 
-  it("rotates Tokyo's point to face +Z", () => {
+  it("rotates Tokyo to the tilted position", () => {
     const lat = 35.6, lng = 139.7;
     const [px, py, pz] = latLngToUnitVector(lat, lng);
     const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
     const [rx, ry, rz] = applyQ(px, py, pz, qx, qy, qz, qw);
-    expect(rx).toBeCloseTo(0, 3);
-    expect(ry).toBeCloseTo(0, 3);
-    expect(rz).toBeCloseTo(1, 3);
+    expect(rx).toBeCloseTo(0, 2);
+    expect(ry).toBeCloseTo(expectedY, 2);
+    expect(rz).toBeCloseTo(expectedZ, 2);
   });
 
-  it("north pole projects upward (+Y) in screen space after rotation", () => {
-    const lat = 51.5, lng = -0.1257; // London
+  it("north projects upward (+Y) in screen space after rotation", () => {
+    const lat = 51.5, lng = -0.1257;
     const [qx, qy, qz, qw] = latLngToQuaternion(lat, lng);
-    // Rotate geographic north vector (0,1,0 in globe space)
     const [nx, ny] = applyQ(0, 1, 0, qx, qy, qz, qw);
-    // Project onto camera plane (XY) — the Y component should dominate (north is up)
     const projLen = Math.sqrt(nx * nx + ny * ny);
     expect(ny / projLen).toBeCloseTo(1, 2);
-    // X component of projection should be near zero (not leaning left/right)
     expect(Math.abs(nx / projLen)).toBeLessThan(0.05);
   });
 

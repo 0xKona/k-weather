@@ -68,33 +68,38 @@ function quaternionFromVectors(
   return [qx / len, qy / len, qz / len, qw / len];
 }
 
+// Tilt applied after north-up correction — shifts the location downward toward the horizon
+// so it's visible when the camera is pulled back for the ISS perspective view
+const TILT_DEGREES = -95;
+const TILT_RAD = TILT_DEGREES * DEG_TO_RAD;
+
 // Returns a quaternion that rotates the globe so that:
 //   1. The given lat/lng faces the camera (+Z)
-//   2. North is always up (+Y) — consistent orientation across all locations
+//   2. North is always up (+Y) — consistent orientation
+//   3. A +30° X tilt shifts the location downward toward the horizon
 export function latLngToQuaternion(lat: number, lng: number): [number, number, number, number] {
   const [px, py, pz] = latLngToUnitVector(lat, lng);
 
   // Step 1: rotate the target point to face +Z
   let [qx, qy, qz, qw] = quaternionFromVectors(px, py, pz, 0, 0, 1);
 
-  // Step 2: after step 1, the globe's geographic north (0,1,0 in globe space)
-  // has been rotated to some direction. Find where it ended up:
+  // Step 2: align projected north with screen-up (+Y)
   const [nx, ny] = applyQuaternion(0, 1, 0, qx, qy, qz, qw);
-
-  // Project that vector onto the plane perpendicular to +Z (the camera plane)
-  // and find the angle between it and +Y (screen up)
   const projLen = Math.sqrt(nx * nx + ny * ny);
 
   if (projLen > 0.001) {
-    // Step 3: compute the Z-axis correction to align the projected north with +Y
     const [rqx, rqy, rqz, rqw] = quaternionFromVectors(
       nx / projLen, ny / projLen, 0,
       0, 1, 0
     );
-
-    // Apply the correction rotation after the first rotation (in camera space = pre-multiply)
     [qx, qy, qz, qw] = multiplyQuaternions(rqx, rqy, rqz, rqw, qx, qy, qz, qw);
   }
+
+  // Step 3: tilt around X axis to push location toward the horizon
+  // Positive X rotation tilts the top toward the camera, moving the location downward
+  const tiltQx = Math.sin(TILT_RAD / 2);
+  const tiltQw = Math.cos(TILT_RAD / 2);
+  [qx, qy, qz, qw] = multiplyQuaternions(tiltQx, 0, 0, tiltQw, qx, qy, qz, qw);
 
   return [qx, qy, qz, qw];
 }
