@@ -21,14 +21,17 @@ const GLOBE_RADIUS = 45;
 // Globe center positioned far below camera so only the curved horizon is visible
 const GLOBE_Y_OFFSET = -40;
 
-// Camera setup for ISS perspective
+// Camera setup for ISS perspective — fixed, no orbit controls
 function CameraSetup() {
   const { camera } = useThree();
+  const initialized = useRef(false);
 
   useEffect(() => {
-    // Position camera above and slightly back, looking down toward the horizon
+    if (initialized.current) return;
+    initialized.current = true;
+
     camera.position.set(0, 12, 8);
-    camera.lookAt(0, GLOBE_Y_OFFSET + GLOBE_RADIUS, 0);
+    camera.lookAt(new THREE.Vector3(0, GLOBE_Y_OFFSET + GLOBE_RADIUS, 0));
     camera.updateProjectionMatrix();
   }, [camera]);
 
