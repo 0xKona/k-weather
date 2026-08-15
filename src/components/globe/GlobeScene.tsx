@@ -74,9 +74,9 @@ export function GlobeScene({ targetLat = null, targetLng = null }: GlobeScenePro
         style={{ background: "#000000" }}
       >
         {/* Ambient kept very low so normal map shadow contrast reads clearly */}
-        <ambientLight intensity={0.06} />
+        <ambientLight intensity={0.079} />
         {/* Sun-side directional light — strong enough to bring out normal map depth */}
-        <directionalLight position={[10, 5, 8]} intensity={2.2} color={0xfff5e0} />
+        <directionalLight position={[10, 5, 8]} intensity={2.9} color={0xfff5e0} />
         <Suspense fallback={null}>
           <GlobeGroup targetLat={targetLat} targetLng={targetLng} />
           <Preload all />
