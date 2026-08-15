@@ -68,7 +68,11 @@ interface BigDataCloudResponse {
   };
 }
 
-// Convert lat/lng coordinates to a GeocodingResult using BigDataCloud's free API.
+// Strips formal UN-style suffixes that some reverse geocoding APIs append.
+// e.g. "United States of America (the)" → "United States of America"
+function cleanCountryName(name: string): string {
+  return name.replace(/\s*\(the\)\s*$/i, "").trim();
+}
 // Falls back to null if the request fails or returns insufficient data.
 export async function reverseGeocode(
   latitude: number,
@@ -91,17 +95,14 @@ export async function reverseGeocode(
     const name = data.city || data.locality;
     if (!name || !data.countryName || !data.countryCode) return null;
 
-    // BigDataCloud doesn't return timezone — fetch it from Open-Meteo using
-    // the coordinates so we get accurate timezone data for day/night logic
     const timezone = await fetchTimezoneForCoords(latitude, longitude);
 
     return {
-      // BigDataCloud has no stable numeric ID — use a coord-based hash
       id: Math.round(latitude * 1000) * 1000000 + Math.round(longitude * 1000),
       name,
       latitude,
       longitude,
-      country: data.countryName,
+      country: cleanCountryName(data.countryName),
       country_code: data.countryCode,
       timezone: timezone ?? "UTC",
       admin1: data.principalSubdivision,
