@@ -47,7 +47,7 @@ export function LocationSuggestions({
       role="listbox"
       id={listboxId}
       className={cn(
-        "absolute bottom-full left-0 right-0 mb-2 rounded-xl overflow-hidden z-50",
+        "absolute top-full left-0 right-0 mt-2 rounded-xl overflow-hidden z-50",
         glassPanel(isDay)
       )}
       variants={shouldReduceMotion ? undefined : listVariants}
