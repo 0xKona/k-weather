@@ -10,10 +10,19 @@ export interface CurrentWeather {
   time: string;
 }
 
+// Daily values from Open-Meteo. Times are ISO local time at the location,
+// one entry per forecast day, e.g. ["2026-08-13T05:47"].
+export interface DailyWeather {
+  time: string[];
+  sunrise: string[];
+  sunset: string[];
+}
+
 export interface WeatherResponse {
   latitude: number;
   longitude: number;
   current_weather: CurrentWeather;
+  daily?: DailyWeather;
   // IANA timezone string e.g. "Europe/London"
   timezone?: string;
   timezone_abbreviation?: string;

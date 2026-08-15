@@ -3,14 +3,11 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import type { WeatherResponse } from "@/types";
+import { latLngToUnitVector } from "@/lib/coordinates";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEG_TO_RAD = Math.PI / 180;
-
-// Distance of the directional light from the origin — large enough that it
-// acts as a parallel (sun-like) light source across the whole globe
-const SUN_DISTANCE = 400;
 
 // ─── Solar calculations ───────────────────────────────────────────────────────
 
@@ -26,98 +23,109 @@ function getSolarDeclination(date: Date): number {
   return 23.45 * Math.sin((360 / 365) * (dayOfYear - 81) * DEG_TO_RAD);
 }
 
-// Convert weather API data into a 3D sun position in world space.
+// Equation of time in minutes — the difference between apparent and mean solar
+// time. Correcting for it places the subsolar point (and thus sunrise/sunset)
+// to within ~1 minute of the true value.
+function getEquationOfTime(date: Date): number {
+  const startOfYear = new Date(date.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor(
+    (date.getTime() - startOfYear.getTime()) / 86_400_000
+  );
+  const b = (2 * Math.PI * (dayOfYear - 81)) / 364;
+  return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
+}
+
+// Reconstruct the UTC instant from the weather API's local time + offset.
+// Open-Meteo returns local time without a timezone suffix, so we parse the
+// components directly and subtract the offset — this is correct regardless of
+// the browser's own timezone (Date's string parsing would apply the browser
+// timezone, which only matches by coincidence).
+function getUtcDate(weather: WeatherResponse): Date | null {
+  const time = weather.current_weather?.time;
+  if (!time) return null;
+  const utcMs = parseLocalTime(time, weather.utc_offset_seconds ?? 0);
+  return utcMs == null ? null : new Date(utcMs);
+}
+
+// Parse a local "YYYY-MM-DDTHH:MM" string (no timezone suffix) into a UTC
+// instant, treating it as local time at the location using its UTC offset.
+function parseLocalTime(localIso: string, utcOffsetSeconds: number): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(localIso);
+  if (!match) return null;
+  const [, y, mo, d, h, mi] = match;
+  const utcMs = Date.UTC(+y, +mo - 1, +d, +h, +mi) - utcOffsetSeconds * 1000;
+  return Number.isNaN(utcMs) ? null : utcMs;
+}
+
+// ─── Sun direction ────────────────────────────────────────────────────────────
 //
-// Coordinate system (matches Three.js scene):
-//   +Y = north pole / up
-//   +Z = toward camera (prime meridian faces camera after globe rotation)
-//   +X = east becomes west after globe's viewing rotation
+// The sun is a single direction in space at any instant, determined only by
+// UTC and the date — never by the selected location. We compute the subsolar
+// point (the location where the sun is directly overhead) and return the
+// direction to it in the globe's Earth-fixed local frame — the same frame used
+// by latLngToUnitVector (north pole = +Y, prime meridian at equator = +X).
 //
-// The globe is always rotated so the selected location faces +Z toward the
-// camera. This means:
-//   - Solar noon  → sun is in front of globe (+Z) and above (+Y)
-//   - 6am (east)  → sun rises from -X side (east maps to -X in world space
-//                    because the globe faces us — east is to our left)
-//   - 6pm (west)  → sun sets toward +X
-//   - Midnight    → sun is behind globe (-Z)
+// Because this direction is expressed in the globe's own local frame, it stays
+// correct regardless of how the globe is rotated to show the selected location:
+//   - the day/night terminator is computed per-fragment in the shader as
+//     dot(surfaceNormal, sunDirection) > 0 → day, < 0 → night
+//   - the directional light sits inside the rotating globe group and therefore
+//     always shines from the correct direction
 //
-// The observer latitude affects the sun's maximum elevation angle (altitude)
-// at solar noon via: altitude = 90° - |latitude - declination|
-function computeSunPosition(
-  localTimeIso: string,      // e.g. "2026-08-15T14:30"
-  utcOffsetSeconds: number,  // e.g. 3600 for BST
-  observerLat: number,       // location latitude in degrees
-  isDay: boolean
-): THREE.Vector3 {
-  // ── Parse local time ──────────────────────────────────────────────────────
-  // The API returns local time without a timezone suffix — reconstruct UTC
-  // by subtracting the offset, then use that for declination calculation
-  const localMs = new Date(localTimeIso).getTime();
-  const utcDate = new Date(localMs - utcOffsetSeconds * 1000);
+// Solar geometry:
+//   - Subsolar latitude = solar declination (seasonal, ±23.45°).
+//   - Subsolar longitude = the meridian where local apparent solar time = 12:00:
+//       longitude = (12 - UTC hours) * 15°  (corrected by the equation of time)
+//     At 17:51 UTC in mid-August the subsolar point is ~14.5°N, 86°W — i.e. the
+//     central US, with Europe on the day side and east Asia in night. Correct.
 
-  const localHour =
-    (new Date(localTimeIso).getHours()) +
-    (new Date(localTimeIso).getMinutes()) / 60;
+function computeSunDirection(utcDate: Date): THREE.Vector3 {
+  const utcHours =
+    utcDate.getUTCHours() +
+    utcDate.getUTCMinutes() / 60 +
+    utcDate.getUTCSeconds() / 3600;
+  const equationOfTime = getEquationOfTime(utcDate); // minutes
 
-  // ── Hour angle ────────────────────────────────────────────────────────────
-  // The hour angle is 0 at solar noon, negative in the morning, positive in
-  // the afternoon. Each hour = 15° of Earth rotation.
-  // We use local solar time ≈ clock time here (ignores equation of time,
-  // accurate to within ~15 minutes which is sufficient for lighting).
-  const hourAngle = (localHour - 12) * 15 * DEG_TO_RAD;
+  const subsolarLat = getSolarDeclination(utcDate);
+  const subsolarLng = (12 - utcHours) * 15 - equationOfTime / 4;
 
-  // ── Solar declination ─────────────────────────────────────────────────────
-  const declination = getSolarDeclination(utcDate) * DEG_TO_RAD;
-  const latRad = observerLat * DEG_TO_RAD;
+  const [x, y, z] = latLngToUnitVector(subsolarLat, subsolarLng);
+  return new THREE.Vector3(x, y, z).normalize();
+}
 
-  // ── Solar altitude angle ──────────────────────────────────────────────────
-  // How high above the horizon the sun is at this moment.
-  // sin(altitude) = sin(lat)·sin(dec) + cos(lat)·cos(dec)·cos(hourAngle)
-  const sinAlt =
-    Math.sin(latRad) * Math.sin(declination) +
-    Math.cos(latRad) * Math.cos(declination) * Math.cos(hourAngle);
-  const altitude = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+// ─── Day/night at the selected location ──────────────────────────────────────
+//
+// Prefer the fetched daily sunrise/sunset window (accurate to the minute from
+// Open-Meteo). Fall back to the sun's computed elevation above the horizon.
 
-  // ── Solar azimuth angle ───────────────────────────────────────────────────
-  // Direction of the sun around the horizon (0 = south, clockwise).
-  // cos(azimuth) = (sin(dec) - sin(alt)·sin(lat)) / (cos(alt)·cos(lat))
-  const cosAlt = Math.cos(altitude);
-  const cosAz =
-    cosAlt > 0.0001
-      ? (Math.sin(declination) - sinAlt * Math.sin(latRad)) /
-        (cosAlt * Math.cos(latRad))
-      : 0;
-  const azimuthFromSouth = Math.acos(Math.max(-1, Math.min(1, cosAz)));
-  // Flip azimuth in the afternoon (hour angle > 0 means sun is west of south)
-  const azimuth = hourAngle > 0 ? azimuthFromSouth : -azimuthFromSouth;
-
-  // ── Convert to world-space Cartesian ─────────────────────────────────────
-  // In geographic space (before globe rotation):
-  //   North = +Y, East = +X (geographic), Up-from-surface = +Z (toward camera
-  //   after the globe rotates the location to face +Z)
-  //
-  // After latLngToQuaternion the location faces +Z. Geographic east therefore
-  // maps to -X in world space (east is to our left when facing the globe).
-  // Azimuth from south, clockwise: south=-Z, east=+X(geo)=-X(world), north=+Z, west=+X(world)
-  const x = -Math.sin(azimuth) * Math.cos(altitude); // east → -X world
-  const y =  Math.sin(altitude);                      // up   → +Y world
-  const z =  Math.cos(azimuth) * Math.cos(altitude);  // south→ -Z, north→ +Z
-
-  const position = new THREE.Vector3(x, y, z).normalize().multiplyScalar(SUN_DISTANCE);
-
-  // When is_day=0 the sun is below the horizon — position it behind the globe
-  // at low intensity (handled by caller) so shadows remain consistent
-  if (!isDay) {
-    position.negate();
+function isDayAtLocation(
+  weather: WeatherResponse | null,
+  utcMs: number,
+  sunDirection: THREE.Vector3,
+  latitude: number | null,
+  longitude: number | null
+): boolean {
+  const daily = weather?.daily;
+  if (weather && daily?.sunrise?.length && daily?.sunset?.length) {
+    const utcOffsetSeconds = weather.utc_offset_seconds ?? 0;
+    const sunriseMs = parseLocalTime(daily.sunrise[0], utcOffsetSeconds);
+    const sunsetMs = parseLocalTime(daily.sunset[0], utcOffsetSeconds);
+    // sunriseMs/sunsetMs are the UTC instants of today's sunrise/sunset at the
+    // location, so compare against the current UTC instant directly
+    if (sunriseMs != null && sunsetMs != null) {
+      return utcMs >= sunriseMs && utcMs < sunsetMs;
+    }
   }
 
-  return position;
+  if (latitude == null || longitude == null) return true;
+  const [lx, ly, lz] = latLngToUnitVector(latitude, longitude);
+  return sunDirection.dot(new THREE.Vector3(lx, ly, lz)) > 0;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export interface SunPosition {
-  // 3D position of the directional light in world space
+  // Unit direction to the sun in the globe's Earth-fixed local frame
   position: THREE.Vector3;
   // True when the sun is above the horizon at the selected location
   isDay: boolean;
@@ -125,37 +133,40 @@ export interface SunPosition {
   intensity: number;
 }
 
-// Derives a realistic sun position and intensity from Open-Meteo weather data.
-// Returns a stable default (midday sun) when weather data is not yet available.
+// Derives a globally-correct sun direction and per-location brightness from
+// Open-Meteo weather data. The sun direction depends only on the UTC instant
+// (weather timestamp, falling back to the device clock); the intensity depends
+// on the sun's elevation at the selected location.
 export function useSunPosition(
   weather: WeatherResponse | null,
-  latitude: number | null
+  latitude: number | null,
+  longitude: number | null
 ): SunPosition {
   return useMemo(() => {
-    // Default: midday sun from slightly west, full intensity
-    const defaultPosition = new THREE.Vector3(-8, 5, 8).normalize().multiplyScalar(SUN_DISTANCE);
+    const utcDate = weather ? getUtcDate(weather) : null;
+    const utcMs = (utcDate ?? new Date()).getTime();
+    const sunDirection = computeSunDirection(utcDate ?? new Date());
 
-    if (!weather?.current_weather || latitude == null) {
-      return { position: defaultPosition, isDay: true, intensity: 3.0 };
+    if (latitude == null || longitude == null) {
+      return { position: sunDirection, isDay: true, intensity: 1.0 };
     }
 
-    const { current_weather, utc_offset_seconds = 0 } = weather;
-    const isDay = current_weather.is_day === 1;
+    const isDay = isDayAtLocation(weather, utcMs, sunDirection, latitude, longitude);
 
-    const position = computeSunPosition(
-      current_weather.time,
-      utc_offset_seconds,
-      latitude,
-      isDay
+    // Sun elevation at the selected location — sin(elevation) is the dot
+    // product of the location's unit vector with the sun direction
+    const [lx, ly, lz] = latLngToUnitVector(latitude, longitude);
+    const sinAlt = Math.max(
+      -1,
+      Math.min(1, sunDirection.dot(new THREE.Vector3(lx, ly, lz)))
     );
 
-    // Intensity: full at midday (altitude ~90°), reduced at low sun angles,
+    // Intensity: full at midday (elevation ~90°), reduced at low sun angles,
     // very dim at night (city lights on night texture carry the visual weight)
-    const altitudeFraction = Math.max(0, position.y / SUN_DISTANCE);
     const intensity = isDay
-      ? 1.0 + altitudeFraction * 2.5  // 1.0 at horizon → 3.5 at zenith
-      : 0.15;                          // dim backlight at night
+      ? 1.0 + Math.max(0, sinAlt) * 2.5  // 1.0 at horizon → 3.5 at zenith
+      : 0.15;                             // dim backlight at night
 
-    return { position, isDay, intensity };
-  }, [weather, latitude]);
+    return { position: sunDirection, isDay, intensity };
+  }, [weather, latitude, longitude]);
 }

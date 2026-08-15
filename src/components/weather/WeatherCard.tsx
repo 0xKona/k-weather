@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Wind } from "lucide-react";
+import { Wind, Sunrise, Sunset } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { WeatherResponse } from "@/types";
@@ -11,6 +11,11 @@ interface WeatherCardProps {
   weather: WeatherResponse | null;
   isLoading: boolean;
   animationDelay?: number;
+}
+
+// Extract the local "HH:MM" from an ISO local time string e.g. "2026-08-13T05:47"
+function formatTime(localIso: string): string {
+  return localIso.slice(11, 16);
 }
 
 // Maps WMO weather codes to human-readable condition text
@@ -94,6 +99,19 @@ export function WeatherCard({ weather, isLoading, animationDelay = 0 }: WeatherC
                 <Wind className="size-4" aria-hidden="true" />
                 <span>{weather.current_weather.windspeed} km/h</span>
               </div>
+
+              {weather.daily?.sunrise?.[0] && weather.daily?.sunset?.[0] && (
+                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Sunrise className="size-4" aria-hidden="true" />
+                    {formatTime(weather.daily.sunrise[0])}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Sunset className="size-4" aria-hidden="true" />
+                    {formatTime(weather.daily.sunset[0])}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

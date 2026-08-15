@@ -68,6 +68,25 @@ describe("WeatherCard", () => {
       expect(icon).toBeInTheDocument();
       expect(icon).toHaveAttribute("aria-hidden", "true");
     });
+
+    it("displays sunrise and sunset times when daily data is present", () => {
+      const weather = {
+        ...mockWeather,
+        daily: {
+          time: ["2026-08-13"],
+          sunrise: ["2026-08-13T05:47"],
+          sunset: ["2026-08-13T20:17"],
+        },
+      };
+      render(<WeatherCard weather={weather} isLoading={false} />);
+      expect(screen.getByText("05:47")).toBeInTheDocument();
+      expect(screen.getByText("20:17")).toBeInTheDocument();
+    });
+
+    it("omits sunrise and sunset when daily data is missing", () => {
+      render(<WeatherCard weather={mockWeather} isLoading={false} />);
+      expect(screen.queryByText(/^\d{2}:\d{2}$/)).not.toBeInTheDocument();
+    });
   });
 
   describe("accessibility", () => {

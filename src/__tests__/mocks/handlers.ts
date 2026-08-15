@@ -49,6 +49,11 @@ export const handlers = [
         is_day: 1,
         time: "2026-08-13T10:00",
       },
+      daily: {
+        time: ["2026-08-13"],
+        sunrise: ["2026-08-13T05:47"],
+        sunset: ["2026-08-13T20:17"],
+      },
     });
   }),
 ];

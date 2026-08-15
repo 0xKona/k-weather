@@ -12,6 +12,9 @@ export async function fetchWeather(
       latitude: String(latitude),
       longitude: String(longitude),
       current_weather: "true",
+      // Sunrise/sunset for the selected location — displayed in the UI and
+      // used to validate day/night state
+      daily: "sunrise,sunset",
       // Request timezone metadata so we can derive utc_offset_seconds for sun positioning
       timezone: "auto",
     });

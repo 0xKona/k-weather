@@ -37,7 +37,11 @@ export default function Home() {
   );
 
   // Derive realistic sun position and day/night state from weather API data
-  const sunPosition = useSunPosition(weather, selectedLocation?.latitude ?? null);
+  const sunPosition = useSunPosition(
+    weather,
+    selectedLocation?.latitude ?? null,
+    selectedLocation?.longitude ?? null
+  );
 
   // Surface weather errors as toasts
   useEffect(() => {

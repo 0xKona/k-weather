@@ -7,8 +7,10 @@ import * as THREE from "three";
 
 interface GlobeProps {
   radius?: number;
-  // Normalised sun direction in world space — derived from useSunPosition.
-  // Used to compute the day/night terminator per-fragment on the night layer.
+  // Unit direction to the sun in the globe's Earth-fixed local frame — derived
+  // from useSunPosition. Used to compute the day/night terminator per-fragment
+  // on the night layer. In local frame it stays correct regardless of how the
+  // globe is rotated to show the selected location.
   sunDirection?: THREE.Vector3;
 }
 
@@ -41,42 +43,45 @@ const AtmosphereMaterial = shaderMaterial(
 // ─── Night layer shader ───────────────────────────────────────────────────────
 // Renders city lights only on the night side of the globe.
 // The day/night boundary (terminator) is computed per-fragment from the dot
-// product of the surface world-normal against the sun direction.
+// product of the surface normal against the sun direction — both in the
+// globe's Earth-fixed local frame, so the terminator stays anchored to the
+// geography no matter how the globe is rotated.
 //
-// dot(normal, sunDir) > 0  → day side   → city lights invisible
-// dot(normal, sunDir) < 0  → night side → city lights visible
+// dot(normal, sunDirection) > 0  → day side   → city lights invisible
+// dot(normal, sunDirection) < 0  → night side → city lights visible
 // Smooth transition zone around 0 gives a soft terminator edge.
 
 const NightLayerMaterial = shaderMaterial(
   {
     nightMap:     null as unknown as THREE.Texture,
-    // Normalised sun direction in world space
+    // Unit direction to the sun in the globe's Earth-fixed local frame
     sunDirection: new THREE.Vector3(0, 1, 0),
     // Width of the terminator blend zone — higher = softer transition
     terminatorSoftness: 0.15,
   },
-  // Vertex shader — passes world-space normal and UV to fragment shader
+  // Vertex shader — passes UV and the local (Earth-fixed) normal to the
+  // fragment shader. The globe group only rotates, so the local normal is the
+  // geographic surface normal and needs no transformation.
   /*glsl*/ `
     varying vec2 vUv;
-    varying vec3 vWorldNormal;
+    varying vec3 vNormal;
     void main() {
       vUv = uv;
-      // Transform normal to world space (no translation, so use modelMatrix 3x3)
-      vWorldNormal = normalize(mat3(modelMatrix) * normal);
+      vNormal = normalize(normal);
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
-  // Fragment shader — city lights fade in where surface faces away from sun
+  // Fragment shader — city lights fade in where the surface faces away from sun
   /*glsl*/ `
     uniform sampler2D nightMap;
     uniform vec3 sunDirection;
     uniform float terminatorSoftness;
     varying vec2 vUv;
-    varying vec3 vWorldNormal;
+    varying vec3 vNormal;
 
     void main() {
       // dot > 0 = day side, dot < 0 = night side
-      float sunDot = dot(normalize(vWorldNormal), normalize(sunDirection));
+      float sunDot = dot(normalize(vNormal), normalize(sunDirection));
 
       // Smoothstep maps the terminator zone:
       //   sunDot = +softness → fully day (alpha 0)
@@ -166,8 +171,9 @@ function DetailMaps({ surfaceRef, nightMatRef, cloudsMatRef, onLoaded }: DetailM
 
 // ─── Globe component ──────────────────────────────────────────────────────────
 
-// Default sun direction used before weather data loads — midday, slightly west
-const DEFAULT_SUN = new THREE.Vector3(-8, 5, 8).normalize();
+// Default sun direction used before weather data loads — a day-side direction
+// in the globe's Earth-fixed local frame (subsolar point at ~14°N, 90°W)
+const DEFAULT_SUN = new THREE.Vector3(0, 0.2419, 0.9703).normalize();
 
 export function Globe({ radius = 2, sunDirection = DEFAULT_SUN }: GlobeProps) {
   const cloudsRef    = useRef<THREE.Mesh>(null);

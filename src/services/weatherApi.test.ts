@@ -22,6 +22,11 @@ describe("fetchWeather", () => {
         is_day: 1,
         time: "2026-08-13T10:00",
       },
+      daily: {
+        time: ["2026-08-13"],
+        sunrise: ["2026-08-13T05:47"],
+        sunset: ["2026-08-13T20:17"],
+      },
     });
   });
 
@@ -103,5 +108,37 @@ describe("fetchWeather", () => {
 
     const url = new URL(capturedUrl);
     expect(url.searchParams.get("current_weather")).toBe("true");
+  });
+
+  it("requests daily sunrise and sunset in the query", async () => {
+    let capturedUrl = "";
+
+    server.use(
+      http.get("https://api.open-meteo.com/v1/forecast", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({
+          latitude: 0,
+          longitude: 0,
+          current_weather: {
+            temperature: 25,
+            windspeed: 5,
+            winddirection: 0,
+            weathercode: 0,
+            is_day: 1,
+            time: "2026-08-13T12:00",
+          },
+          daily: {
+            time: ["2026-08-13"],
+            sunrise: ["2026-08-13T06:00"],
+            sunset: ["2026-08-13T21:00"],
+          },
+        });
+      })
+    );
+
+    await fetchWeather(0, 0);
+
+    const url = new URL(capturedUrl);
+    expect(url.searchParams.get("daily")).toBe("sunrise,sunset");
   });
 });
