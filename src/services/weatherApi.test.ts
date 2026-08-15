@@ -27,6 +27,25 @@ describe("fetchWeather", () => {
         sunrise: ["2026-08-13T05:47"],
         sunset: ["2026-08-13T20:17"],
       },
+      hourly: {
+        time: [
+          "2026-08-13T10:00",
+          "2026-08-13T11:00",
+          "2026-08-13T12:00",
+          "2026-08-13T13:00",
+          "2026-08-13T14:00",
+          "2026-08-13T15:00",
+          "2026-08-13T16:00",
+          "2026-08-13T17:00",
+          "2026-08-13T18:00",
+          "2026-08-13T19:00",
+          "2026-08-13T20:00",
+          "2026-08-13T21:00",
+        ],
+        temperature_2m: [18.5, 19.2, 20.1, 21.0, 21.4, 22.0, 20.2, 19.0, 18.0, 17.2, 16.5, 15.9],
+        weathercode: [2, 2, 1, 1, 0, 0, 1, 2, 3, 3, 2, 1],
+        is_day: [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+      },
     });
   });
 
@@ -140,5 +159,33 @@ describe("fetchWeather", () => {
 
     const url = new URL(capturedUrl);
     expect(url.searchParams.get("daily")).toBe("sunrise,sunset");
+  });
+
+  it("requests hourly variables and limits to the next 12 hours", async () => {
+    let capturedUrl = "";
+
+    server.use(
+      http.get("https://api.open-meteo.com/v1/forecast", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({
+          latitude: 0,
+          longitude: 0,
+          current_weather: {
+            temperature: 25,
+            windspeed: 5,
+            winddirection: 0,
+            weathercode: 0,
+            is_day: 1,
+            time: "2026-08-13T12:00",
+          },
+        });
+      })
+    );
+
+    await fetchWeather(0, 0);
+
+    const url = new URL(capturedUrl);
+    expect(url.searchParams.get("hourly")).toBe("temperature_2m,weathercode,is_day");
+    expect(url.searchParams.get("forecast_hours")).toBe("12");
   });
 });

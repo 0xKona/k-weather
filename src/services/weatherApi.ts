@@ -15,6 +15,10 @@ export async function fetchWeather(
       // Sunrise/sunset for the selected location — displayed in the UI and
       // used to validate day/night state
       daily: "sunrise,sunset",
+      // Hourly conditions for the horizontal 12-hour forecast strip
+      hourly: "temperature_2m,weathercode,is_day",
+      // Limit the hourly forecast to the next 12 hours
+      forecast_hours: "12",
       // Request timezone metadata so we can derive utc_offset_seconds for sun positioning
       timezone: "auto",
     });

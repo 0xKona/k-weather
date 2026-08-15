@@ -18,11 +18,21 @@ export interface DailyWeather {
   sunset: string[];
 }
 
+// Hourly forecast values from Open-Meteo. Times are ISO local time at the
+// location, one entry per hour. is_day: 1 = day, 0 = night.
+export interface HourlyWeather {
+  time: string[];
+  temperature_2m: number[];
+  weathercode: number[];
+  is_day: number[];
+}
+
 export interface WeatherResponse {
   latitude: number;
   longitude: number;
   current_weather: CurrentWeather;
   daily?: DailyWeather;
+  hourly?: HourlyWeather;
   // IANA timezone string e.g. "Europe/London"
   timezone?: string;
   timezone_abbreviation?: string;

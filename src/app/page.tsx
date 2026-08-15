@@ -5,7 +5,7 @@ import { MapPin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeScene } from "@/components/globe";
 import { LocationSearch } from "@/components/search";
-import { WeatherCard } from "@/components/weather";
+import { WeatherCard, HourlyForecast } from "@/components/weather";
 import { Button } from "@/components/ui/button";
 import { LocationTitle, LocalTime } from "@/components/typography";
 import { glassPanel } from "@/lib/glass";
@@ -101,23 +101,12 @@ export default function Home() {
         />
       </div>
 
-      {/* Layer 2b: Local time — below the location text but in front of globe */}
-      <div className="absolute inset-x-0 top-[12%] z-20 flex justify-center pointer-events-none px-4 pt-32 md:pt-40 lg:pt-48">
+      {/* Layer 2b: Local time + controls — below the location text, above globe */}
+      <div className="absolute inset-x-0 top-[12%] z-20 flex flex-col items-center gap-6 px-4 pt-32 md:pt-40 lg:pt-48 pointer-events-none">
         <LocalTime
           localTime={weather?.current_weather?.time ?? null}
           animationDelay={0.2}
         />
-      </div>
-
-      {/* Layer 3: UI controls — weather card above input, input bottom-center */}
-      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 p-4 md:p-6 pb-8 pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-md">
-          <WeatherCard
-            weather={weather}
-            isLoading={isLoading && !isResolving}
-            animationDelay={1.2}
-          />
-        </div>
         <div className="pointer-events-auto w-full max-w-md">
           <LocationSearch onLocationSelect={setSelectedLocation} isDay={isDay} />
         </div>
@@ -137,6 +126,24 @@ export default function Home() {
             )}
             {isLocating ? "Locating…" : "Use my location"}
           </Button>
+        </div>
+      </div>
+
+      {/* Layer 3: Weather panels — weather card above collapsible forecast, bottom-center */}
+      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 p-4 md:p-6 pb-8 pointer-events-none">
+        <div className="pointer-events-auto w-full max-w-md">
+          <WeatherCard
+            weather={weather}
+            isLoading={isLoading && !isResolving}
+            animationDelay={1.2}
+          />
+        </div>
+        <div className="pointer-events-auto w-full max-w-md">
+          <HourlyForecast
+            weather={weather}
+            isLoading={isLoading && !isResolving}
+            animationDelay={1.4}
+          />
         </div>
       </div>
     </main>
