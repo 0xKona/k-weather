@@ -36,7 +36,7 @@ export function Globe({ radius = 2 }: GlobeProps) {
         <meshPhongMaterial
           map={dayMap}
           normalMap={normalMap}
-          normalScale={new THREE.Vector2(2, 2)}
+          normalScale={new THREE.Vector2(5, 5)}
           specularMap={specularMap}
           specular={new THREE.Color(0x4499cc)}
           shininess={18}
@@ -50,7 +50,7 @@ export function Globe({ radius = 2 }: GlobeProps) {
           map={cloudsMap}
           alphaMap={cloudsMap}
           transparent
-          opacity={0.9}
+          opacity={0.5}
           depthWrite={false}
           side={THREE.FrontSide}
         />
