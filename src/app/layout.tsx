@@ -29,6 +29,14 @@ export default function RootLayout({
         >
           Privacy
         </Link>
+        <a
+          href="https://open-meteo.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-3 left-4 z-50 text-xs text-foreground/40 transition-colors hover:text-foreground/70"
+        >
+          Powered by Open-Meteo
+        </a>
         <Toaster position="bottom-right" offset={40} />
       </body>
     </html>
