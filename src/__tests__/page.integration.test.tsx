@@ -188,8 +188,9 @@ describe("Home page integration", () => {
     const input = screen.getByRole("combobox");
     await user.type(input, "London");
 
+    // The panel opens instantly as a skeleton — wait for the actual results
     await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(screen.getByRole("option")).toBeInTheDocument();
     });
 
     // Scope to the listbox — LocationTitle may also show "United Kingdom"
@@ -206,8 +207,9 @@ describe("Home page integration", () => {
     const input = screen.getByRole("combobox");
     await user.type(input, "London");
 
+    // The panel opens instantly as a skeleton — wait for the actual results
     await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(screen.getByRole("option")).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("option"));
@@ -230,8 +232,9 @@ describe("Home page integration", () => {
     const input = screen.getByRole("combobox");
     await user.type(input, "London");
 
+    // The panel opens instantly as a skeleton — wait for the actual results
     await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(screen.getByRole("option")).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("option"));
@@ -256,8 +259,9 @@ describe("Home page integration", () => {
     const input = screen.getByRole("combobox");
     await user.type(input, "London");
 
+    // The panel opens instantly as a skeleton — wait for the actual results
     await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(screen.getByRole("option")).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("option"));
