@@ -67,7 +67,7 @@ function OutlineRing({
   }, [positions]);
 
   return (
-    <line geometry={geometry} ref={undefined}>
+    <line>
       <primitive object={geometry} ref={geoRef} attach="geometry" />
       <lineBasicMaterial color={0x88ccff} transparent opacity={0.85} depthWrite={false} />
     </line>

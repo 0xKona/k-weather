@@ -110,7 +110,8 @@ declare module "@react-three/fiber" {
       depthWrite?: boolean;
       blending?: THREE.Blending;
       side?: THREE.Side;
-    }>;
+    }> &
+      React.RefAttributes<THREE.ShaderMaterial>;
     nightLayerMaterial: React.PropsWithChildren<{
       nightMap?: THREE.Texture;
       sunDirection?: THREE.Vector3;
@@ -118,7 +119,10 @@ declare module "@react-three/fiber" {
       transparent?: boolean;
       depthWrite?: boolean;
       blending?: THREE.Blending;
-    }>;
+    }> &
+      React.RefAttributes<
+        THREE.ShaderMaterial & { sunDirection: THREE.Vector3; nightMap: THREE.Texture }
+      >;
   }
 }
 
