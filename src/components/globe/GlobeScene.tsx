@@ -56,12 +56,12 @@ function GlobeGroup({
   targetLat,
   targetLng,
   countryCode,
-  isDay,
+  sunDirection,
 }: {
   targetLat: number | null;
   targetLng: number | null;
   countryCode: string | null;
-  isDay: boolean;
+  sunDirection: THREE.Vector3;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   // Holds the destination quaternion — updated when lat/lng changes, never set directly on the mesh
@@ -107,7 +107,7 @@ function GlobeGroup({
 
   return (
     <group ref={groupRef} position={[0, GLOBE_Y, 0]}>
-      <Globe radius={GLOBE_RADIUS} isDay={isDay} />
+      <Globe radius={GLOBE_RADIUS} sunDirection={sunDirection} />
       <CountryOutline
         countryCode={countryCode}
         radius={GLOBE_RADIUS}
@@ -131,7 +131,7 @@ export function GlobeScene({
   countryCode = null,
   sunPosition,
 }: GlobeSceneProps) {
-  // Default sun position while weather data loads — midday, slightly west
+  // Default sun direction while weather data loads — midday, slightly west
   const defaultSun: SunPosition = {
     position: new THREE.Vector3(-8, 5, 8).normalize().multiplyScalar(200),
     isDay: true,
@@ -139,6 +139,8 @@ export function GlobeScene({
   };
 
   const sun = sunPosition ?? defaultSun;
+  // Normalised direction vector for the terminator shader
+  const sunDirection = sun.position.clone().normalize();
 
   return (
     <div className="absolute inset-0 w-full h-full" aria-hidden="true">
@@ -163,7 +165,7 @@ export function GlobeScene({
             targetLat={targetLat}
             targetLng={targetLng}
             countryCode={countryCode}
-            isDay={sun.isDay}
+            sunDirection={sunDirection}
           />
           <Preload all />
         </Suspense>
