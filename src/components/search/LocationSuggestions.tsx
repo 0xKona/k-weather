@@ -2,6 +2,8 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { glassPanel } from "@/lib/glass";
 import type { GeocodingResult } from "@/types";
 
 interface LocationSuggestionsProps {
@@ -10,6 +12,7 @@ interface LocationSuggestionsProps {
   activeIndex: number;
   onSelect: (result: GeocodingResult) => void;
   listboxId: string;
+  isDay?: boolean;
 }
 
 const listVariants = {
@@ -31,6 +34,7 @@ export function LocationSuggestions({
   activeIndex,
   onSelect,
   listboxId,
+  isDay = true,
 }: LocationSuggestionsProps) {
   const shouldReduceMotion = useReducedMotion();
 
@@ -42,7 +46,10 @@ export function LocationSuggestions({
     <motion.ul
       role="listbox"
       id={listboxId}
-      className="absolute bottom-full left-0 right-0 mb-2 backdrop-blur-md bg-popover/90 border border-border rounded-lg overflow-hidden z-50"
+      className={cn(
+        "absolute bottom-full left-0 right-0 mb-2 rounded-xl overflow-hidden z-50",
+        glassPanel(isDay)
+      )}
       variants={shouldReduceMotion ? undefined : listVariants}
       initial="hidden"
       animate="visible"

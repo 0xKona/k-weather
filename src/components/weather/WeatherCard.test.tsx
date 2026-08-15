@@ -106,7 +106,23 @@ describe("WeatherCard", () => {
     it("applies glassmorphism styling (check for backdrop-blur class)", () => {
       render(<WeatherCard weather={mockWeather} isLoading={false} />);
       const card = screen.getByRole("region").querySelector("[data-slot='card']");
-      expect(card).toHaveClass("backdrop-blur-lg");
+      expect(card).toHaveClass("backdrop-blur-xl");
+    });
+
+    it("uses a more opaque day tint when is_day is 1", () => {
+      render(<WeatherCard weather={mockWeather} isLoading={false} />);
+      const card = screen.getByRole("region").querySelector("[data-slot='card']");
+      expect(card).toHaveClass("bg-background/85");
+    });
+
+    it("uses a more transparent night tint when is_day is 0", () => {
+      const weather = {
+        ...mockWeather,
+        current_weather: { ...mockWeather.current_weather, is_day: 0 },
+      };
+      render(<WeatherCard weather={weather} isLoading={false} />);
+      const card = screen.getByRole("region").querySelector("[data-slot='card']");
+      expect(card).toHaveClass("bg-background/60");
     });
   });
 

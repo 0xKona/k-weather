@@ -50,6 +50,10 @@ export default function Home() {
     }
   }, [error]);
 
+  // Day/night at the selected location — drives the glass tint of the
+  // weather card and search input so they hold contrast against the globe
+  const isDay = weather ? weather.current_weather.is_day === 1 : true;
+
   return (
     <main className="relative h-dvh w-full overflow-hidden">
       {/* Black background layer - z-0 */}
@@ -82,7 +86,7 @@ export default function Home() {
 
       {/* Layer 3: UI controls — weather card above input, input bottom-center */}
       <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 p-4 md:p-6 pb-8 pointer-events-none">
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto w-full max-w-md">
           <WeatherCard
             weather={weather}
             isLoading={isLoading && !isResolving}
@@ -90,7 +94,7 @@ export default function Home() {
           />
         </div>
         <div className="pointer-events-auto w-full max-w-md">
-          <LocationSearch onLocationSelect={setSelectedLocation} />
+          <LocationSearch onLocationSelect={setSelectedLocation} isDay={isDay} />
         </div>
       </div>
     </main>

@@ -4,6 +4,8 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Wind, Sunrise, Sunset } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { glassPanel } from "@/lib/glass";
 import type { WeatherResponse } from "@/types";
 import { WeatherIcon } from "./WeatherIcon";
 
@@ -37,7 +39,7 @@ function getConditionText(code: number): string {
 
 function WeatherCardSkeleton() {
   return (
-    <Card className="w-64 backdrop-blur-lg bg-card/80 border-border/10" data-testid="weather-card-skeleton">
+    <Card className={cn("w-full max-w-md", glassPanel(true))} data-testid="weather-card-skeleton">
       <CardContent className="space-y-4">
         <Skeleton className="size-8 rounded-full" data-testid="skeleton-icon" />
         <Skeleton className="h-12 w-32" data-testid="skeleton-temp" />
@@ -50,6 +52,7 @@ function WeatherCardSkeleton() {
 
 export function WeatherCard({ weather, isLoading, animationDelay = 0 }: WeatherCardProps) {
   const shouldReduceMotion = useReducedMotion();
+  const isDay = weather?.current_weather.is_day === 1;
 
   if (!weather && !isLoading) {
     return null;
@@ -67,41 +70,45 @@ export function WeatherCard({ weather, isLoading, animationDelay = 0 }: WeatherC
   return (
     <AnimatePresence mode="wait">
       {isLoading ? (
-        <motion.div key="skeleton" {...animationProps}>
+        <motion.div key="skeleton" className="w-full max-w-md" {...animationProps}>
           <WeatherCardSkeleton />
         </motion.div>
       ) : weather ? (
         <motion.div
           key="weather-data"
+          className="w-full max-w-md"
           role="region"
           aria-label="Current weather"
           aria-live="polite"
           {...animationProps}
         >
-          <Card className="w-64 backdrop-blur-lg bg-card/80 border-border/10">
+          <Card className={cn("w-full max-w-md", glassPanel(isDay))}>
             <CardContent>
-              <div className="flex items-start gap-3">
-                <WeatherIcon
-                  weatherCode={weather.current_weather.weathercode}
-                  isDay={weather.current_weather.is_day === 1}
-                />
-                <div className="flex flex-col">
-                  <span className="text-5xl font-bold text-foreground">
-                    {weather.current_weather.temperature}°C
-                  </span>
-                  <span className="text-sm text-muted-foreground mt-1">
-                    {getConditionText(weather.current_weather.weathercode)}
-                  </span>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <WeatherIcon
+                    weatherCode={weather.current_weather.weathercode}
+                    isDay={isDay}
+                    className="size-10"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">
+                      {getConditionText(weather.current_weather.weathercode)}
+                    </span>
+                    <span className="text-5xl font-bold text-foreground leading-tight">
+                      {weather.current_weather.temperature}°C
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Wind className="size-4" aria-hidden="true" />
+                  <span>{weather.current_weather.windspeed} km/h</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
-                <Wind className="size-4" aria-hidden="true" />
-                <span>{weather.current_weather.windspeed} km/h</span>
-              </div>
-
               {weather.daily?.sunrise?.[0] && weather.daily?.sunset?.[0] && (
-                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <Sunrise className="size-4" aria-hidden="true" />
                     {formatTime(weather.daily.sunrise[0])}

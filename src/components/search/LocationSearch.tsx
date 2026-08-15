@@ -5,15 +5,19 @@ import { useReducedMotion } from "framer-motion";
 import { Search, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { glassPanel } from "@/lib/glass";
 import { searchLocations } from "@/services/geocodingApi";
 import { LocationSuggestions } from "./LocationSuggestions";
 import type { GeocodingResult } from "@/types";
 
 interface LocationSearchProps {
   onLocationSelect: (location: GeocodingResult) => void;
+  // Day/night at the selected location — adapts the glass tint over the globe
+  isDay?: boolean;
 }
 
-export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
+export function LocationSearch({ onLocationSelect, isDay = true }: LocationSearchProps) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<GeocodingResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -136,6 +140,7 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
           activeIndex={activeIndex}
           onSelect={handleSelect}
           listboxId={listboxId}
+          isDay={isDay}
         />
       )}
       <div className="relative flex items-center">
@@ -151,7 +156,10 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          className="pl-10 pr-12 py-3 h-11 backdrop-blur-sm bg-transparent border-border/20 focus-visible:ring-accent/50 focus-visible:border-accent/50"
+          className={cn(
+            "pl-10 pr-12 py-3 h-11 rounded-xl focus-visible:ring-accent/60 focus-visible:border-accent/60",
+            glassPanel(isDay)
+          )}
         />
         <Button
           type="button"
@@ -160,7 +168,7 @@ export function LocationSearch({ onLocationSelect }: LocationSearchProps) {
           onClick={handleSubmit}
           disabled={suggestions.length === 0}
           aria-label="Submit search"
-          className="absolute right-1.5"
+          className="absolute right-1.5 rounded-xl"
         >
           <ArrowUp className="size-4" />
         </Button>
