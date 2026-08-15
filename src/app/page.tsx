@@ -6,11 +6,26 @@ import { GlobeScene } from "@/components/globe";
 import { LocationSearch } from "@/components/search";
 import { WeatherCard } from "@/components/weather";
 import { LocationTitle } from "@/components/typography";
-import { useWeatherData } from "@/hooks/useWeatherData";
+import { useWeatherData, useInitialLocation, useUrlLocation } from "@/hooks";
 import type { GeocodingResult } from "@/types";
 
 export default function Home() {
   const [selectedLocation, setSelectedLocation] = useState<GeocodingResult | null>(null);
+
+  // Resolves the initial location on first load:
+  // URL params → browser geolocation → London default
+  const { initialLocation, isResolving } = useInitialLocation();
+
+  // Apply the initial location once resolved, but only if the user hasn't
+  // already made a selection (avoids overwriting a fast manual search)
+  useEffect(() => {
+    if (initialLocation && !selectedLocation) {
+      setSelectedLocation(initialLocation);
+    }
+  }, [initialLocation]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep URL in sync with the selected location — replaceState, no history pollution
+  useUrlLocation(selectedLocation);
 
   const { weather, isLoading, error } = useWeatherData(
     selectedLocation?.latitude ?? null,
@@ -48,7 +63,7 @@ export default function Home() {
         <div className="pointer-events-auto">
           <WeatherCard
             weather={weather}
-            isLoading={isLoading}
+            isLoading={isLoading && !isResolving}
             animationDelay={1.2}
           />
         </div>
