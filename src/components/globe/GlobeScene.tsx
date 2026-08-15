@@ -12,6 +12,7 @@ interface GlobeSceneProps {
   targetLat?: number | null;
   targetLng?: number | null;
   countryCode?: string | null;
+  timezone?: string | null;
 }
 
 // Globe large enough that only the curved horizon is visible in the viewport
@@ -19,7 +20,7 @@ const GLOBE_RADIUS = 50;
 // Push the globe centre below the camera so the horizon fills the lower half
 const GLOBE_Y = -55;
 
-function GlobeGroup({ targetLat, targetLng, countryCode }: { targetLat: number | null; targetLng: number | null; countryCode: string | null }) {
+function GlobeGroup({ targetLat, targetLng, countryCode, timezone }: { targetLat: number | null; targetLng: number | null; countryCode: string | null; timezone: string | null }) {
   const groupRef = useRef<THREE.Group>(null);
   // Holds the destination quaternion — updated when lat/lng changes, never set directly on the mesh
   const targetQuaternion = useRef(new THREE.Quaternion());
@@ -57,7 +58,7 @@ function GlobeGroup({ targetLat, targetLng, countryCode }: { targetLat: number |
 
   return (
     <group ref={groupRef} position={[0, GLOBE_Y, 0]}>
-      <Globe radius={GLOBE_RADIUS} />
+      <Globe radius={GLOBE_RADIUS} timezone={timezone} />
       <CountryOutline countryCode={countryCode} radius={GLOBE_RADIUS} geoJson={geoJson} />
       {pinPosition && (
         <mesh position={pinPosition}>
@@ -69,7 +70,7 @@ function GlobeGroup({ targetLat, targetLng, countryCode }: { targetLat: number |
   );
 }
 
-export function GlobeScene({ targetLat = null, targetLng = null, countryCode = null }: GlobeSceneProps) {
+export function GlobeScene({ targetLat = null, targetLng = null, countryCode = null, timezone = null }: GlobeSceneProps) {
   return (
     <div className="absolute inset-0 w-full h-full" aria-hidden="true">
       <Canvas
@@ -84,12 +85,10 @@ export function GlobeScene({ targetLat = null, targetLng = null, countryCode = n
         gl={{ antialias: true, alpha: false }}
         style={{ background: "#000000" }}
       >
-        {/* Ambient kept very low so normal map shadow contrast reads clearly */}
         <ambientLight intensity={0.35} />
-        {/* Sun-side directional light — strong enough to bring out normal map depth */}
         <directionalLight position={[10, 5, 8]} intensity={3.0} color={0xfff5e0} />
         <Suspense fallback={null}>
-          <GlobeGroup targetLat={targetLat} targetLng={targetLng} countryCode={countryCode} />
+          <GlobeGroup targetLat={targetLat} targetLng={targetLng} countryCode={countryCode} timezone={timezone} />
           <Preload all />
         </Suspense>
       </Canvas>

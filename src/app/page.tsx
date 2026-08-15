@@ -31,6 +31,7 @@ export default function Home() {
         targetLat={selectedLocation?.latitude}
         targetLng={selectedLocation?.longitude}
         countryCode={selectedLocation?.country_code ?? null}
+        timezone={selectedLocation?.timezone ?? null}
       />
 
       {/* Layer 1: Location typography — space area above the horizon */}

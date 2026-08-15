@@ -4,9 +4,11 @@ import { useRef } from "react";
 import { useTexture, shaderMaterial } from "@react-three/drei";
 import { useFrame, extend } from "@react-three/fiber";
 import * as THREE from "three";
+import { useIsNight } from "@/hooks/useIsNight";
 
 interface GlobeProps {
   radius?: number;
+  timezone?: string | null;
 }
 
 // Fresnel-based atmospheric glow — bright at the horizon edge, transparent in the centre
@@ -54,26 +56,35 @@ declare module "@react-three/fiber" {
 
 // Textured Earth sphere with normal map depth, specular reflectivity, and cloud layer.
 // Earth rotation logic lives in GlobeScene — this component owns only appearance.
-export function Globe({ radius = 2 }: GlobeProps) {
+export function Globe({ radius = 2, timezone = null }: GlobeProps) {
   const cloudsRef = useRef<THREE.Mesh>(null);
+  const nightRef  = useRef<THREE.MeshBasicMaterial>(null);
+  const isNight   = useIsNight(timezone);
 
-  const [dayMap, normalMap, specularMap, cloudsMap] = useTexture([
+  const [dayMap, nightMap, normalMap, specularMap, cloudsMap] = useTexture([
     "/textures/8k_earth_daymap.jpg",
+    "/textures/8k_earth_nightmap.jpg",
     "/textures/8k_earth_normal_map.png",
     "/textures/8k_earth_specular_map.jpg",
     "/textures/8k_earth_clouds.jpg",
   ]);
 
-  // Very slow independent cloud drift — does not affect earth rotation
   useFrame((_, delta) => {
+    // Cloud drift — independent of earth rotation
     if (cloudsRef.current) {
       cloudsRef.current.rotation.y += delta * 0.003;
+    }
+
+    // Fade night layer in/out — ~1.5s transition
+    if (nightRef.current) {
+      const target = isNight ? 1.0 : 0.0;
+      nightRef.current.opacity += (target - nightRef.current.opacity) * Math.min(1, delta * 0.7);
     }
   });
 
   return (
     <>
-      {/* Earth surface */}
+      {/* Earth surface — original meshPhongMaterial, untouched from committed state */}
       <mesh>
         <sphereGeometry args={[radius, 64, 64]} />
         <meshPhongMaterial
@@ -83,6 +94,19 @@ export function Globe({ radius = 2 }: GlobeProps) {
           specularMap={specularMap}
           specular={new THREE.Color(0x4499cc)}
           shininess={18}
+        />
+      </mesh>
+
+      {/* Night layer — city lights fade in additively when isNight, invisible otherwise */}
+      <mesh>
+        <sphereGeometry args={[radius + 0.01, 64, 64]} />
+        <meshBasicMaterial
+          ref={nightRef}
+          map={nightMap}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
         />
       </mesh>
 
