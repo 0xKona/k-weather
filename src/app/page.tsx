@@ -30,6 +30,7 @@ export default function Home() {
       <GlobeScene
         targetLat={selectedLocation?.latitude}
         targetLng={selectedLocation?.longitude}
+        countryCode={selectedLocation?.country_code ?? null}
       />
 
       {/* Layer 1: Location typography — space area above the horizon */}

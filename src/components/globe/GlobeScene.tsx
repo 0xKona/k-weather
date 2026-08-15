@@ -1,15 +1,17 @@
 "use client";
 
-import { Suspense, useRef, useEffect } from "react";
+import { Suspense, useRef, useEffect, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Preload } from "@react-three/drei";
 import * as THREE from "three";
 import { Globe } from "./Globe";
+import { CountryOutline } from "./CountryOutline";
 import { latLngToQuaternion, latLngToUnitVector } from "@/lib/coordinates";
 
 interface GlobeSceneProps {
   targetLat?: number | null;
   targetLng?: number | null;
+  countryCode?: string | null;
 }
 
 // Globe large enough that only the curved horizon is visible in the viewport
@@ -17,10 +19,19 @@ const GLOBE_RADIUS = 50;
 // Push the globe centre below the camera so the horizon fills the lower half
 const GLOBE_Y = -55;
 
-function GlobeGroup({ targetLat, targetLng }: { targetLat: number | null; targetLng: number | null }) {
+function GlobeGroup({ targetLat, targetLng, countryCode }: { targetLat: number | null; targetLng: number | null; countryCode: string | null }) {
   const groupRef = useRef<THREE.Group>(null);
   // Holds the destination quaternion — updated when lat/lng changes, never set directly on the mesh
   const targetQuaternion = useRef(new THREE.Quaternion());
+  const [geoJson, setGeoJson] = useState<GeoJSON.FeatureCollection | null>(null);
+
+  // Load GeoJSON once on mount
+  useEffect(() => {
+    fetch("/data/countries.geojson")
+      .then((r) => r.json())
+      .then(setGeoJson)
+      .catch(() => null);
+  }, []);
 
   useEffect(() => {
     if (targetLat == null || targetLng == null) {
@@ -40,25 +51,25 @@ function GlobeGroup({ targetLat, targetLng }: { targetLat: number | null; target
     groupRef.current.quaternion.slerp(targetQuaternion.current, 1 - Math.exp(-speed * delta));
   });
 
-  // Debug pin — scaled to globe radius
   const pinPosition = targetLat != null && targetLng != null
-    ? latLngToUnitVector(targetLat, targetLng).map(v => v * (GLOBE_RADIUS + 0.2)) as [number, number, number]
+    ? latLngToUnitVector(targetLat, targetLng).map(v => v * (GLOBE_RADIUS + 0.35)) as [number, number, number]
     : null;
 
   return (
     <group ref={groupRef} position={[0, GLOBE_Y, 0]}>
       <Globe radius={GLOBE_RADIUS} />
+      <CountryOutline countryCode={countryCode} radius={GLOBE_RADIUS} geoJson={geoJson} />
       {pinPosition && (
         <mesh position={pinPosition}>
-          <sphereGeometry args={[0.3, 16, 16]} />
-          <meshBasicMaterial color="red" />
+          <sphereGeometry args={[0.15, 16, 16]} />
+          <meshBasicMaterial color={0xffffff} />
         </mesh>
       )}
     </group>
   );
 }
 
-export function GlobeScene({ targetLat = null, targetLng = null }: GlobeSceneProps) {
+export function GlobeScene({ targetLat = null, targetLng = null, countryCode = null }: GlobeSceneProps) {
   return (
     <div className="absolute inset-0 w-full h-full" aria-hidden="true">
       <Canvas
@@ -78,7 +89,7 @@ export function GlobeScene({ targetLat = null, targetLng = null }: GlobeScenePro
         {/* Sun-side directional light — strong enough to bring out normal map depth */}
         <directionalLight position={[10, 5, 8]} intensity={3.0} color={0xfff5e0} />
         <Suspense fallback={null}>
-          <GlobeGroup targetLat={targetLat} targetLng={targetLng} />
+          <GlobeGroup targetLat={targetLat} targetLng={targetLng} countryCode={countryCode} />
           <Preload all />
         </Suspense>
       </Canvas>
