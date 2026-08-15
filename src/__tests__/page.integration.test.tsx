@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, afterAll, afterEach, describe, it, expect, vi } from "vitest";
+import { beforeAll, beforeEach, afterAll, afterEach, describe, it, expect, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/__tests__/mocks/server";
+import { isWebGLAvailable } from "@/lib/webgl";
 import React from "react";
 
 // Mock GlobeScene — jsdom cannot run WebGL
@@ -59,6 +60,13 @@ vi.mock("sonner", () => ({
   Toaster: () => null,
 }));
 
+// Mock the WebGL probe — controls whether the page renders the
+// "WebGL not supported" warning
+vi.mock("@/lib/webgl", () => ({
+  isWebGLAvailable: vi.fn(),
+}));
+const mockIsWebGLAvailable = vi.mocked(isWebGLAvailable);
+
 // Mock navigator.geolocation — jsdom does not provide it
 type GeolocationMock = {
   getCurrentPosition: ReturnType<typeof vi.fn>;
@@ -89,6 +97,9 @@ function unstubGeolocation() {
 import Home from "@/app/page";
 
 beforeAll(() => server.listen());
+beforeEach(() => {
+  mockIsWebGLAvailable.mockReturnValue(true);
+});
 afterEach(() => {
   server.resetHandlers();
   mockToastError.mockClear();
@@ -120,6 +131,32 @@ describe("Home page integration", () => {
       expect(screen.getByRole("region", { name: /weather/i })).toBeInTheDocument();
     });
     expect(navigator.geolocation).toBeUndefined();
+  });
+
+  it("shows the loading placeholder until weather data arrives", async () => {
+    render(<Home />);
+
+    expect(screen.getByTestId("loading-state")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByRole("region", { name: /weather/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("loading-state")).not.toBeInTheDocument();
+  });
+
+  it("shows the WebGL warning when WebGL is unavailable", async () => {
+    mockIsWebGLAvailable.mockReturnValue(false);
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("webgl-warning")).toBeInTheDocument();
+    });
+  });
+
+  it("does not show the WebGL warning when WebGL is available", async () => {
+    render(<Home />);
+
+    expect(screen.queryByTestId("webgl-warning")).not.toBeInTheDocument();
   });
 
   it("selects the current location when 'Use my location' is clicked", async () => {

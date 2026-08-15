@@ -14,6 +14,12 @@ interface GlobeSceneProps {
   targetLng?: number | null;
   countryCode?: string | null;
   sunPosition?: SunPosition;
+  // Result of the WebGL2 capability probe. The Canvas is only mounted when
+  // this is true — otherwise the static fallback renders, so three.js never
+  // attempts to create a context and cannot throw the "Error creating WebGL
+  // context" unhandled rejection. null (not yet probed) also renders the
+  // fallback so the server and first client render match.
+  webglAvailable?: boolean | null;
 }
 
 // Globe large enough that only the curved horizon is visible in the viewport
@@ -153,6 +159,20 @@ function GlobeGroup({
   );
 }
 
+// ─── No-WebGL fallback ────────────────────────────────────────────────────────
+// Static stand-in for browsers where WebGL context creation is blocked (e.g.
+// Brave fingerprinting protection) or WebGL2 is unavailable (some mobile GPUs).
+// Keeps the page looking intentional instead of flat black.
+
+function GlobeFallback() {
+  return (
+    <div
+      data-testid="globe-fallback"
+      className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_at_50%_120%,#1e2a4a_0%,#0b1226_55%,#05070f_100%)]"
+    />
+  );
+}
+
 // ─── Scene ────────────────────────────────────────────────────────────────────
 
 export function GlobeScene({
@@ -160,6 +180,7 @@ export function GlobeScene({
   targetLng = null,
   countryCode = null,
   sunPosition,
+  webglAvailable = null,
 }: GlobeSceneProps) {
   // Default sun while weather data loads — a day-side direction in the globe's
   // Earth-fixed local frame
@@ -170,6 +191,14 @@ export function GlobeScene({
   };
 
   const sun = sunPosition ?? defaultSun;
+
+  if (webglAvailable !== true) {
+    return (
+      <div className="absolute inset-0 w-full h-full" aria-hidden="true">
+        <GlobeFallback />
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-0 w-full h-full" aria-hidden="true">

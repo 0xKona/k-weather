@@ -5,7 +5,7 @@ import { MapPin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { GlobeScene } from "@/components/globe";
 import { LocationSearch } from "@/components/search";
-import { WeatherCard, HourlyForecast } from "@/components/weather";
+import { WeatherCard, HourlyForecast, WebGLWarning, LoadingState } from "@/components/weather";
 import { Button } from "@/components/ui/button";
 import { LocationTitle, LocalTime } from "@/components/typography";
 import { glassPanel } from "@/lib/glass";
@@ -15,6 +15,7 @@ import {
   useInitialLocation,
   useUrlLocation,
   useSunPosition,
+  useWebGLSupport,
   requestUserLocation,
 } from "@/hooks";
 import type { GeocodingResult } from "@/types";
@@ -79,6 +80,17 @@ export default function Home() {
   // weather card and search input so they hold contrast against the globe
   const isDay = weather ? weather.current_weather.is_day === 1 : true;
 
+  // WebGL support is probed client-side. Drives both the globe (Canvas only
+  // mounts when true) and the "WebGL not supported" warning (only when false).
+  const webglAvailable = useWebGLSupport();
+
+  // Visible loading placeholder for the weather panels. Rendered whenever
+  // there's no data and no fetch in flight — including the server-rendered
+  // HTML, so a slow connection that never finishes hydrating still shows a
+  // card instead of a blank area. Identical on server and first client render
+  // (no hydration mismatch).
+  const showLoadingState = !weather && !isLoading && !error;
+
   return (
     <main className="relative h-dvh w-full overflow-hidden">
       {/* Black background layer - z-0 */}
@@ -90,6 +102,7 @@ export default function Home() {
         targetLng={selectedLocation?.longitude}
         countryCode={selectedLocation?.country_code ?? null}
         sunPosition={sunPosition}
+        webglAvailable={webglAvailable}
       />
 
       {/* Layer 2: Location typography — above background but behind globe */}
@@ -131,6 +144,16 @@ export default function Home() {
 
       {/* Layer 3: Weather panels — weather card above collapsible forecast, bottom-center */}
       <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 p-4 md:p-6 pb-8 pointer-events-none">
+        {webglAvailable === false && (
+          <div className="pointer-events-auto w-full max-w-md">
+            <WebGLWarning shown />
+          </div>
+        )}
+        {showLoadingState && (
+          <div className="pointer-events-auto w-full max-w-md">
+            <LoadingState isDay={isDay} />
+          </div>
+        )}
         <div className="pointer-events-auto w-full max-w-md">
           <WeatherCard
             weather={weather}
