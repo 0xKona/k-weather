@@ -12,6 +12,8 @@ export async function fetchWeather(
       latitude: String(latitude),
       longitude: String(longitude),
       current_weather: "true",
+      // Request timezone metadata so we can derive utc_offset_seconds for sun positioning
+      timezone: "auto",
     });
 
     const response = await fetch(`${WEATHER_BASE_URL}?${params}`);

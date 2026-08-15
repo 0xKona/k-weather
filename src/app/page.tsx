@@ -6,31 +6,38 @@ import { GlobeScene } from "@/components/globe";
 import { LocationSearch } from "@/components/search";
 import { WeatherCard } from "@/components/weather";
 import { LocationTitle } from "@/components/typography";
-import { useWeatherData, useInitialLocation, useUrlLocation } from "@/hooks";
+import {
+  useWeatherData,
+  useInitialLocation,
+  useUrlLocation,
+  useSunPosition,
+} from "@/hooks";
 import type { GeocodingResult } from "@/types";
 
 export default function Home() {
   const [selectedLocation, setSelectedLocation] = useState<GeocodingResult | null>(null);
 
-  // Resolves the initial location on first load:
-  // URL params → browser geolocation → London default
+  // Resolves the initial location: URL params → geolocation → London default
   const { initialLocation, isResolving } = useInitialLocation();
 
   // Apply the initial location once resolved, but only if the user hasn't
-  // already made a selection (avoids overwriting a fast manual search)
+  // already made a manual selection
   useEffect(() => {
     if (initialLocation && !selectedLocation) {
       setSelectedLocation(initialLocation);
     }
   }, [initialLocation]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep URL in sync with the selected location — replaceState, no history pollution
+  // Keep ?lat=x&lng=y URL params in sync with the selected location
   useUrlLocation(selectedLocation);
 
   const { weather, isLoading, error } = useWeatherData(
     selectedLocation?.latitude ?? null,
     selectedLocation?.longitude ?? null
   );
+
+  // Derive realistic sun position and day/night state from weather API data
+  const sunPosition = useSunPosition(weather, selectedLocation?.latitude ?? null);
 
   // Surface weather errors as toasts
   useEffect(() => {
@@ -46,7 +53,7 @@ export default function Home() {
         targetLat={selectedLocation?.latitude}
         targetLng={selectedLocation?.longitude}
         countryCode={selectedLocation?.country_code ?? null}
-        timezone={selectedLocation?.timezone ?? null}
+        sunPosition={sunPosition}
       />
 
       {/* Layer 1: Location typography — space area above the horizon */}

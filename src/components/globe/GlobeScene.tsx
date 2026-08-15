@@ -7,12 +7,13 @@ import * as THREE from "three";
 import { Globe } from "./Globe";
 import { CountryOutline } from "./CountryOutline";
 import { latLngToQuaternion, latLngToUnitVector } from "@/lib/coordinates";
+import type { SunPosition } from "@/hooks";
 
 interface GlobeSceneProps {
   targetLat?: number | null;
   targetLng?: number | null;
   countryCode?: string | null;
-  timezone?: string | null;
+  sunPosition?: SunPosition;
 }
 
 // Globe large enough that only the curved horizon is visible in the viewport
@@ -20,7 +21,48 @@ const GLOBE_RADIUS = 50;
 // Push the globe centre below the camera so the horizon fills the lower half
 const GLOBE_Y = -55;
 
-function GlobeGroup({ targetLat, targetLng, countryCode, timezone }: { targetLat: number | null; targetLng: number | null; countryCode: string | null; timezone: string | null }) {
+// ─── Animated directional light ───────────────────────────────────────────────
+// Smoothly interpolates the sun's position and intensity each frame so
+// transitions between locations don't cause an abrupt lighting change.
+
+interface SunLightProps {
+  sunPosition: SunPosition;
+}
+
+function SunLight({ sunPosition }: SunLightProps) {
+  const lightRef = useRef<THREE.DirectionalLight>(null);
+
+  useFrame((_, delta) => {
+    if (!lightRef.current) return;
+    const speed = Math.min(1, delta * 1.5);
+    lightRef.current.position.lerp(sunPosition.position, speed);
+    lightRef.current.intensity +=
+      (sunPosition.intensity - lightRef.current.intensity) * speed;
+  });
+
+  return (
+    <directionalLight
+      ref={lightRef}
+      position={sunPosition.position}
+      intensity={sunPosition.intensity}
+      color={0xfff5e0}
+    />
+  );
+}
+
+// ─── Globe group ──────────────────────────────────────────────────────────────
+
+function GlobeGroup({
+  targetLat,
+  targetLng,
+  countryCode,
+  isDay,
+}: {
+  targetLat: number | null;
+  targetLng: number | null;
+  countryCode: string | null;
+  isDay: boolean;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   // Holds the destination quaternion — updated when lat/lng changes, never set directly on the mesh
   const targetQuaternion = useRef(new THREE.Quaternion());
@@ -50,17 +92,27 @@ function GlobeGroup({ targetLat, targetLng, countryCode, timezone }: { targetLat
     if (!groupRef.current) return;
     // Speed factor: higher = faster. 2.5 gives ~0.4s to reach destination
     const speed = 2.5;
-    groupRef.current.quaternion.slerp(targetQuaternion.current, 1 - Math.exp(-speed * delta));
+    groupRef.current.quaternion.slerp(
+      targetQuaternion.current,
+      1 - Math.exp(-speed * delta)
+    );
   });
 
-  const pinPosition = targetLat != null && targetLng != null
-    ? latLngToUnitVector(targetLat, targetLng).map(v => v * (GLOBE_RADIUS + 0.35)) as [number, number, number]
-    : null;
+  const pinPosition =
+    targetLat != null && targetLng != null
+      ? (latLngToUnitVector(targetLat, targetLng).map(
+          (v) => v * (GLOBE_RADIUS + 0.35)
+        ) as [number, number, number])
+      : null;
 
   return (
     <group ref={groupRef} position={[0, GLOBE_Y, 0]}>
-      <Globe radius={GLOBE_RADIUS} timezone={timezone} />
-      <CountryOutline countryCode={countryCode} radius={GLOBE_RADIUS} geoJson={geoJson} />
+      <Globe radius={GLOBE_RADIUS} isDay={isDay} />
+      <CountryOutline
+        countryCode={countryCode}
+        radius={GLOBE_RADIUS}
+        geoJson={geoJson}
+      />
       {pinPosition && (
         <mesh position={pinPosition}>
           <sphereGeometry args={[0.15, 16, 16]} />
@@ -71,7 +123,23 @@ function GlobeGroup({ targetLat, targetLng, countryCode, timezone }: { targetLat
   );
 }
 
-export function GlobeScene({ targetLat = null, targetLng = null, countryCode = null, timezone = null }: GlobeSceneProps) {
+// ─── Scene ────────────────────────────────────────────────────────────────────
+
+export function GlobeScene({
+  targetLat = null,
+  targetLng = null,
+  countryCode = null,
+  sunPosition,
+}: GlobeSceneProps) {
+  // Default sun position while weather data loads — midday, slightly west
+  const defaultSun: SunPosition = {
+    position: new THREE.Vector3(-8, 5, 8).normalize().multiplyScalar(200),
+    isDay: true,
+    intensity: 3.0,
+  };
+
+  const sun = sunPosition ?? defaultSun;
+
   return (
     <div className="absolute inset-0 w-full h-full" aria-hidden="true">
       <Canvas
@@ -86,10 +154,17 @@ export function GlobeScene({ targetLat = null, targetLng = null, countryCode = n
         gl={{ antialias: true, alpha: false }}
         style={{ background: "#000000" }}
       >
+        {/* Low ambient — keeps shadow side visible without washing out normal maps */}
         <ambientLight intensity={0.35} />
-        <directionalLight position={[-8, 5, 8]} intensity={3.0} color={0xfff5e0} />
+        {/* Sun-derived directional light — position and intensity animate per location */}
+        <SunLight sunPosition={sun} />
         <Suspense fallback={null}>
-          <GlobeGroup targetLat={targetLat} targetLng={targetLng} countryCode={countryCode} timezone={timezone} />
+          <GlobeGroup
+            targetLat={targetLat}
+            targetLng={targetLng}
+            countryCode={countryCode}
+            isDay={sun.isDay}
+          />
           <Preload all />
         </Suspense>
       </Canvas>

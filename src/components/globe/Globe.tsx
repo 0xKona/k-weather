@@ -4,11 +4,11 @@ import { useRef, Suspense, useEffect, useCallback } from "react";
 import { useTexture, shaderMaterial } from "@react-three/drei";
 import { useFrame, extend } from "@react-three/fiber";
 import * as THREE from "three";
-import { useIsNight } from "@/hooks/useIsNight";
 
 interface GlobeProps {
   radius?: number;
-  timezone?: string | null;
+  // Driven by useSunPosition via the weather API — more accurate than timezone-based calculation
+  isDay?: boolean;
 }
 
 // ─── Atmosphere shader ────────────────────────────────────────────────────────
@@ -103,12 +103,11 @@ function DetailMaps({ surfaceRef, nightMatRef, cloudsMatRef, onLoaded }: DetailM
 
 // ─── Globe component ──────────────────────────────────────────────────────────
 
-export function Globe({ radius = 2, timezone = null }: GlobeProps) {
+export function Globe({ radius = 2, isDay = true }: GlobeProps) {
   const cloudsRef    = useRef<THREE.Mesh>(null);
   const nightRef     = useRef<THREE.MeshBasicMaterial>(null);
   const surfaceRef   = useRef<THREE.MeshPhongMaterial>(null);
   const cloudsMatRef = useRef<THREE.MeshPhongMaterial>(null);
-  const isNight      = useIsNight(timezone);
   const detailLoaded = useRef(false);
   const onLoaded = useCallback(() => { detailLoaded.current = true; }, []);
 
@@ -120,7 +119,7 @@ export function Globe({ radius = 2, timezone = null }: GlobeProps) {
       cloudsRef.current.rotation.y += delta * 0.003;
     }
     if (nightRef.current) {
-      const target = isNight ? 1.0 : 0.0;
+      const target = isDay ? 0.0 : 1.0;
       nightRef.current.opacity += (target - nightRef.current.opacity) * Math.min(1, delta * 0.7);
     }
 
