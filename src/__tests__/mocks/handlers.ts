@@ -56,4 +56,17 @@ export const handlers = [
       },
     });
   }),
+
+  // BigDataCloud reverse geocoding
+  http.get(
+    "https://api.bigdatacloud.net/data/reverse-geocode-client",
+    () => {
+      return HttpResponse.json({
+        city: "Testville",
+        principalSubdivision: "Testshire",
+        countryName: "Testland",
+        countryCode: "TL",
+      });
+    }
+  ),
 ];

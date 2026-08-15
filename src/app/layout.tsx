@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -22,7 +23,13 @@ export default function RootLayout({
     <html lang="en" className={`dark ${inter.variable}`}>
       <body className="h-full overflow-hidden">
         {children}
-        <Toaster position="bottom-right" />
+        <Link
+          href="/privacy/"
+          className="fixed bottom-3 right-4 z-50 text-xs text-foreground/40 transition-colors hover:text-foreground/70"
+        >
+          Privacy
+        </Link>
+        <Toaster position="bottom-right" offset={40} />
       </body>
     </html>
   );

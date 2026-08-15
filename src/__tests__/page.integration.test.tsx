@@ -50,10 +50,41 @@ function filterMotionProps(props: Record<string, unknown>) {
 
 // Mock sonner toast for assertion
 const mockToastError = vi.fn();
+const mockToastSuccess = vi.fn();
 vi.mock("sonner", () => ({
-  toast: { error: (...args: unknown[]) => mockToastError(...args) },
+  toast: {
+    error: (...args: unknown[]) => mockToastError(...args),
+    success: (...args: unknown[]) => mockToastSuccess(...args),
+  },
   Toaster: () => null,
 }));
+
+// Mock navigator.geolocation — jsdom does not provide it
+type GeolocationMock = {
+  getCurrentPosition: ReturnType<typeof vi.fn>;
+  clearWatch: ReturnType<typeof vi.fn>;
+  watchPosition: ReturnType<typeof vi.fn>;
+};
+let geolocationMock: GeolocationMock | undefined;
+function stubGeolocation() {
+  geolocationMock = {
+    getCurrentPosition: vi.fn(),
+    clearWatch: vi.fn(),
+    watchPosition: vi.fn(),
+  };
+  Object.defineProperty(navigator, "geolocation", {
+    value: geolocationMock,
+    configurable: true,
+  });
+  return geolocationMock;
+}
+function unstubGeolocation() {
+  geolocationMock = undefined;
+  Object.defineProperty(navigator, "geolocation", {
+    value: undefined,
+    configurable: true,
+  });
+}
 
 import Home from "@/app/page";
 
@@ -61,6 +92,10 @@ beforeAll(() => server.listen());
 afterEach(() => {
   server.resetHandlers();
   mockToastError.mockClear();
+  mockToastSuccess.mockClear();
+  if (geolocationMock) {
+    unstubGeolocation();
+  }
 });
 afterAll(() => server.close());
 
@@ -76,10 +111,74 @@ describe("Home page integration", () => {
     expect(screen.getByTestId("globe-scene")).toBeInTheDocument();
   });
 
-  it("does not show location title or weather card initially", () => {
+  it("shows the London default and never auto-requests geolocation on load", async () => {
     render(<Home />);
-    expect(screen.queryByText(/LONDON/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: /weather/i })).not.toBeInTheDocument();
+    // No URL params and no geolocation request — London is the silent default.
+    // Geolocation must NOT be prompted automatically.
+    expect(screen.getByText("LONDON")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("region", { name: /weather/i })).toBeInTheDocument();
+    });
+    expect(navigator.geolocation).toBeUndefined();
+  });
+
+  it("selects the current location when 'Use my location' is clicked", async () => {
+    const geo = stubGeolocation();
+    geo.getCurrentPosition.mockImplementation((success: (position: GeolocationPosition) => void) => {
+      success({
+        coords: {
+          latitude: 51.5074,
+          longitude: -0.1278,
+          accuracy: 10,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+          toJSON: () => ({}),
+        },
+        timestamp: Date.now(),
+        toJSON: () => ({}),
+      });
+    });
+
+    const user = userEvent.setup();
+    render(<Home />);
+
+    const locateButton = screen.getByRole("button", { name: /use my location/i });
+    await user.click(locateButton);
+
+    // Reverse-geocoded "Testville" becomes the selected location
+    await waitFor(() => {
+      expect(screen.getByText("TESTVILLE")).toBeInTheDocument();
+    });
+    expect(mockToastSuccess).toHaveBeenCalledWith("Showing weather for Testville");
+  });
+
+  it("shows an error toast when location access is denied", async () => {
+    const geo = stubGeolocation();
+    geo.getCurrentPosition.mockImplementation(
+      (_success: (position: GeolocationPosition) => void, error: (err: GeolocationPositionError) => void) => {
+        error({
+          code: 1,
+          message: "denied",
+          PERMISSION_DENIED: 1,
+          POSITION_UNAVAILABLE: 2,
+          TIMEOUT: 3,
+        });
+      }
+    );
+
+    const user = userEvent.setup();
+    render(<Home />);
+
+    const locateButton = screen.getByRole("button", { name: /use my location/i });
+    await user.click(locateButton);
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith(
+        "Location access was denied or unavailable. Check your browser's permission settings and try again."
+      );
+    });
   });
 
   it("shows suggestions when user types a location", async () => {

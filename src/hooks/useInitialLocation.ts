@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { reverseGeocode, LONDON_DEFAULT } from "@/services/geocodingApi";
 import type { GeocodingResult } from "@/types";
 
-// How long to wait for geolocation before falling back to London (ms)
+// How long to wait for geolocation before giving up (ms)
 const GEOLOCATION_TIMEOUT_MS = 8000;
 
 // ─── URL param helpers ────────────────────────────────────────────────────────
@@ -43,19 +43,36 @@ function requestGeolocation(): Promise<GeolocationCoordinates> {
   });
 }
 
+// ─── User-initiated location ──────────────────────────────────────────────────
+
+// Requests the browser's current position (only ever called from a user
+// gesture) and reverse geocodes it into a location.
+// Resolves to null if the user denies permission or a request fails.
+export async function requestUserLocation(): Promise<GeocodingResult | null> {
+  try {
+    const coords = await requestGeolocation();
+    return await reverseGeocode(coords.latitude, coords.longitude);
+  } catch {
+    return null;
+  }
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 interface UseInitialLocationReturn {
   // The resolved initial location — null while resolving
   initialLocation: GeocodingResult | null;
-  // Whether we're still resolving (URL geocode or geolocation in progress)
+  // Whether we're still resolving (URL geocode in progress)
   isResolving: boolean;
 }
 
 // Determines the initial location on first load using the following priority:
 //   1. URL params (?lat=x&lng=y) — restored via reverse geocoding
-//   2. Browser geolocation — if the user grants permission
-//   3. London — fallback default
+//   2. London — fallback default
+//
+// Note: browser geolocation is intentionally NOT requested here. Location
+// access only happens after an explicit user gesture via requestUserLocation,
+// so no personal data is processed without the user's informed action.
 //
 // Returns the resolved location and a resolving flag for loading states.
 export function useInitialLocation(): UseInitialLocationReturn {
@@ -79,25 +96,15 @@ export function useInitialLocation(): UseInitialLocationReturn {
             latitude: urlCoords.latitude,
             longitude: urlCoords.longitude,
           });
-          setIsResolving(false);
         }
+        if (!cancelled) setIsResolving(false);
         return;
       }
 
-      // ── Step 2: Request geolocation ───────────────────────────────────────
-      try {
-        const coords = await requestGeolocation();
-        const result = await reverseGeocode(coords.latitude, coords.longitude);
-        if (!cancelled) {
-          setInitialLocation(result ?? LONDON_DEFAULT);
-          setIsResolving(false);
-        }
-      } catch {
-        // ── Step 3: Fall back to London ───────────────────────────────────
-        if (!cancelled) {
-          setInitialLocation(LONDON_DEFAULT);
-          setIsResolving(false);
-        }
+      // ── Step 2: Fall back to London ─────────────────────────────────────
+      if (!cancelled) {
+        setInitialLocation(LONDON_DEFAULT);
+        setIsResolving(false);
       }
     }
 
