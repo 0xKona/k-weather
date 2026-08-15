@@ -26,13 +26,14 @@ function GlobeGroup({ targetLat, targetLng, countryCode, timezone }: { targetLat
   const targetQuaternion = useRef(new THREE.Quaternion());
   const [geoJson, setGeoJson] = useState<GeoJSON.FeatureCollection | null>(null);
 
-  // Load GeoJSON once on mount
+  // Load GeoJSON lazily — only when a location with a country code is first selected
   useEffect(() => {
+    if (!countryCode || geoJson) return;
     fetch("/data/countries.geojson")
       .then((r) => r.json())
       .then(setGeoJson)
       .catch(() => null);
-  }, []);
+  }, [countryCode, geoJson]);
 
   useEffect(() => {
     if (targetLat == null || targetLng == null) {
