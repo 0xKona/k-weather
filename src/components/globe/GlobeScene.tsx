@@ -86,7 +86,7 @@ export function GlobeScene({ targetLat = null, targetLng = null, countryCode = n
         style={{ background: "#000000" }}
       >
         <ambientLight intensity={0.35} />
-        <directionalLight position={[10, 5, 8]} intensity={3.0} color={0xfff5e0} />
+        <directionalLight position={[-8, 5, 8]} intensity={3.0} color={0xfff5e0} />
         <Suspense fallback={null}>
           <GlobeGroup targetLat={targetLat} targetLng={targetLng} countryCode={countryCode} timezone={timezone} />
           <Preload all />
