@@ -64,7 +64,7 @@ export function Globe({ radius = 2, timezone = null }: GlobeProps) {
   const [dayMap, nightMap, normalMap, specularMap, cloudsMap] = useTexture([
     "/textures/8k_earth_daymap.jpg",
     "/textures/8k_earth_nightmap.jpg",
-    "/textures/8k_earth_normal_map.png",
+    "/textures/8k_earth_normal_map.jpg",
     "/textures/8k_earth_specular_map.jpg",
     "/textures/8k_earth_clouds.jpg",
   ]);
