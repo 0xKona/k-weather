@@ -99,6 +99,23 @@ describe("LocationSearch", () => {
     expect(screen.getAllByRole("option")).toHaveLength(2);
   });
 
+  it("opens the suggestions panel immediately while typing (before debounce resolves)", async () => {
+    const user = userEvent.setup({
+      advanceTimers: vi.advanceTimersByTime.bind(vi),
+    });
+    render(<LocationSearch {...defaultProps} />);
+    const input = screen.getByRole("combobox");
+
+    // Type without advancing the 300ms debounce — the panel must still appear
+    await user.type(input, "Lon");
+
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    // Panel shows the loading skeleton until results arrive
+    expect(input).toHaveAttribute("aria-expanded", "true");
+    const skeletonItems = screen.getAllByTestId("skeleton-item");
+    expect(skeletonItems.length).toBeGreaterThan(0);
+  });
+
   it("calls onLocationSelect when suggestion is selected", async () => {
     const onLocationSelect = vi.fn();
     const user = userEvent.setup({

@@ -58,8 +58,15 @@ export function LocationSearch({ onLocationSelect, isDay = true }: LocationSearc
       if (!value.trim()) {
         setSuggestions([]);
         setIsOpen(false);
+        setIsLoading(false);
         return;
       }
+
+      // Show the suggestions panel immediately (loading state) so the UI
+      // responds the instant the user starts typing; the debounced request
+      // replaces the skeleton with real results once it resolves.
+      setIsLoading(true);
+      setIsOpen(true);
 
       debounceRef.current = setTimeout(() => {
         performSearch(value);
