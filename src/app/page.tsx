@@ -168,7 +168,7 @@ export default function Home() {
           <WeatherCard
             weather={weather}
             isLoading={isLoading && !isResolving}
-            animationDelay={1.2}
+            animationDelay={0.05}
             unit={temperatureUnit}
             onToggleUnit={toggleTemperatureUnit}
             windSpeedUnit={windSpeedUnit}
@@ -179,7 +179,7 @@ export default function Home() {
           <HourlyForecast
             weather={weather}
             isLoading={isLoading && !isResolving}
-            animationDelay={1.4}
+            animationDelay={0.2}
             unit={temperatureUnit}
             onToggleUnit={toggleTemperatureUnit}
           />

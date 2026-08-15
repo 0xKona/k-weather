@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,12 +65,25 @@ export function HourlyForecast({
   // hourly entry "Now" when it falls within the current hour
   const currentHourIso = weather?.current_weather.time.slice(0, 13);
 
-  const animationProps = shouldReduceMotion
+  // Entrance animation — runs once when the card first mounts. The swap
+  // between skeleton and content inside is handled independently (see
+  // swapProps) so fresh data appears immediately
+  const entranceProps = shouldReduceMotion
     ? {}
     : {
         initial: { opacity: 0, y: 20 },
         animate: { opacity: 1, y: 0 },
         transition: { duration: 0.3, ease: "easeOut" as const, delay: animationDelay },
+      };
+
+  // Fast, delay-free crossfade between the loading strip and the entries
+  const swapProps = shouldReduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.15, ease: "easeOut" as const },
       };
 
   const toggle = () => setIsExpanded((prev) => !prev);
@@ -81,7 +94,7 @@ export function HourlyForecast({
       role="region"
       aria-label="Hourly forecast"
       aria-live="polite"
-      {...animationProps}
+      {...entranceProps}
     >
       <Card className={cn("w-full max-w-md", glassPanel(isDay))}>
         <CardContent>
@@ -105,43 +118,55 @@ export function HourlyForecast({
           </button>
 
           {isExpanded && (
-            <div
-              id={STRIP_ID}
-              className="mt-3 flex gap-2 overflow-x-auto pb-1 snap-x [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent"
-              data-testid="hourly-scroll-container"
-            >
+            <AnimatePresence initial={false} mode="wait">
               {isLoading || !hours ? (
-                <HourlyStripSkeleton />
+                <motion.div
+                  key="strip-skeleton"
+                  id={STRIP_ID}
+                  className="mt-3 flex gap-2 overflow-x-auto pb-1 snap-x [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent"
+                  data-testid="hourly-scroll-container"
+                  {...swapProps}
+                >
+                  <HourlyStripSkeleton />
+                </motion.div>
               ) : (
-                hours.time.map((time, index) => (
-                  <div
-                    key={time}
-                    className="flex min-w-14 snap-start flex-col items-center gap-1"
-                    data-testid="hour-item"
-                  >
-                    <span className="text-xs text-muted-foreground">
-                      {index === 0 && time.slice(0, 13) === currentHourIso
-                        ? "Now"
-                        : formatHour(time)}
-                    </span>
-                    <WeatherIcon
-                      weatherCode={hours.weathercode[index]}
-                      isDay={hours.is_day[index] === 1}
-                      className="size-6"
-                    />
-                    <button
-                      type="button"
-                      onClick={onToggleUnit}
-                      title={`Switch to ${unitLabel(otherUnit(unit))}`}
-                      aria-label={`Switch to ${unitLabel(otherUnit(unit))}`}
-                      className="text-sm font-medium tabular-nums cursor-pointer transition-opacity hover:opacity-75"
+                <motion.div
+                  key="strip-data"
+                  id={STRIP_ID}
+                  className="mt-3 flex gap-2 overflow-x-auto pb-1 snap-x [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent"
+                  data-testid="hourly-scroll-container"
+                  {...swapProps}
+                >
+                  {hours.time.map((time, index) => (
+                    <div
+                      key={time}
+                      className="flex min-w-14 snap-start flex-col items-center gap-1"
+                      data-testid="hour-item"
                     >
-                      {formatTemperature(hours.temperature_2m[index], unit)}
-                    </button>
-                  </div>
-                ))
+                      <span className="text-xs text-muted-foreground">
+                        {index === 0 && time.slice(0, 13) === currentHourIso
+                          ? "Now"
+                          : formatHour(time)}
+                      </span>
+                      <WeatherIcon
+                        weatherCode={hours.weathercode[index]}
+                        isDay={hours.is_day[index] === 1}
+                        className="size-6"
+                      />
+                      <button
+                        type="button"
+                        onClick={onToggleUnit}
+                        title={`Switch to ${unitLabel(otherUnit(unit))}`}
+                        aria-label={`Switch to ${unitLabel(otherUnit(unit))}`}
+                        className="text-sm font-medium tabular-nums cursor-pointer transition-opacity hover:opacity-75"
+                      >
+                        {formatTemperature(hours.temperature_2m[index], unit)}
+                      </button>
+                    </div>
+                  ))}
+                </motion.div>
               )}
-            </div>
+            </AnimatePresence>
           )}
         </CardContent>
       </Card>

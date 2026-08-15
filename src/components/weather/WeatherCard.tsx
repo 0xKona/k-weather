@@ -72,83 +72,97 @@ export function WeatherCard({
     return null;
   }
 
-  const animationProps = shouldReduceMotion
+  // Entrance animation — runs once when the card first mounts. The swap
+  // between skeleton and data inside is handled independently (see swapProps)
+  // so freshly-fetched data fades in immediately instead of re-waiting the
+  // entrance delay.
+  const entranceProps = shouldReduceMotion
     ? {}
     : {
         initial: { opacity: 0, y: 20 },
         animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -20 },
         transition: { duration: 0.3, ease: "easeOut" as const, delay: animationDelay },
       };
 
+  // Fast, delay-free crossfade between the skeleton and the loaded card
+  const swapProps = shouldReduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.2, ease: "easeOut" as const },
+      };
+
   return (
-    <AnimatePresence mode="wait">
-      {isLoading ? (
-        <motion.div key="skeleton" className="w-full max-w-md" {...animationProps}>
-          <WeatherCardSkeleton />
-        </motion.div>
-      ) : weather ? (
-        <motion.div
-          key="weather-data"
-          className="w-full max-w-md"
-          role="region"
-          aria-label="Current weather"
-          aria-live="polite"
-          {...animationProps}
-        >
-          <Card className={cn("w-full max-w-md", glassPanel(isDay))}>
-            <CardContent>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <WeatherIcon
-                    weatherCode={weather.current_weather.weathercode}
-                    isDay={isDay}
-                    className="size-10"
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">
-                      {getConditionText(weather.current_weather.weathercode)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={onToggleUnit}
-                      title={`Switch to ${unitLabel(otherUnit(unit))}`}
-                      aria-label={`Switch to ${unitLabel(otherUnit(unit))}`}
-                      className="text-5xl font-bold text-foreground leading-tight cursor-pointer transition-opacity hover:opacity-75"
-                    >
-                      {formatTemperature(weather.current_weather.temperature, unit)}
-                    </button>
+    <motion.div
+      className="w-full max-w-md"
+      role="region"
+      aria-label="Current weather"
+      aria-live="polite"
+      {...entranceProps}
+    >
+      <AnimatePresence initial={false} mode="wait">
+        {isLoading ? (
+          <motion.div key="skeleton" {...swapProps}>
+            <WeatherCardSkeleton />
+          </motion.div>
+        ) : weather ? (
+          <motion.div key="weather-data" {...swapProps}>
+            <Card className={cn("w-full max-w-md", glassPanel(isDay))}>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <WeatherIcon
+                      weatherCode={weather.current_weather.weathercode}
+                      isDay={isDay}
+                      className="size-10"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm text-muted-foreground">
+                        {getConditionText(weather.current_weather.weathercode)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={onToggleUnit}
+                        title={`Switch to ${unitLabel(otherUnit(unit))}`}
+                        aria-label={`Switch to ${unitLabel(otherUnit(unit))}`}
+                        className="text-5xl font-bold text-foreground leading-tight cursor-pointer transition-opacity hover:opacity-75"
+                      >
+                        {formatTemperature(weather.current_weather.temperature, unit)}
+                      </button>
+                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={onToggleWindSpeedUnit}
+                    title={`Switch to ${speedUnitLabel(otherSpeedUnit(windSpeedUnit))}`}
+                    aria-label={`Switch to ${speedUnitLabel(otherSpeedUnit(windSpeedUnit))}`}
+                    className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-opacity hover:opacity-75"
+                  >
+                    <Wind className="size-4" aria-hidden="true" />
+                    <span>{formatWindSpeed(weather.current_weather.windspeed, windSpeedUnit)}</span>
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={onToggleWindSpeedUnit}
-                  title={`Switch to ${speedUnitLabel(otherSpeedUnit(windSpeedUnit))}`}
-                  aria-label={`Switch to ${speedUnitLabel(otherSpeedUnit(windSpeedUnit))}`}
-                  className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-opacity hover:opacity-75"
-                >
-                  <Wind className="size-4" aria-hidden="true" />
-                  <span>{formatWindSpeed(weather.current_weather.windspeed, windSpeedUnit)}</span>
-                </button>
-              </div>
-
-              {weather.daily?.sunrise?.[0] && weather.daily?.sunset?.[0] && (
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <Sunrise className="size-4" aria-hidden="true" />
-                    {formatTime(weather.daily.sunrise[0])}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Sunset className="size-4" aria-hidden="true" />
-                    {formatTime(weather.daily.sunset[0])}
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+                {weather.daily?.sunrise?.[0] && weather.daily?.sunset?.[0] && (
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Sunrise className="size-4" aria-hidden="true" />
+                      {formatTime(weather.daily.sunrise[0])}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Sunset className="size-4" aria-hidden="true" />
+                      {formatTime(weather.daily.sunset[0])}
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </motion.div>
   );
 }
