@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { GlobeScene } from "@/components/globe";
 import { LocationSearch } from "@/components/search";
 import { WeatherCard } from "@/components/weather";
-import { LocationTitle } from "@/components/typography";
+import { LocationTitle, LocalTime } from "@/components/typography";
 import {
   useWeatherData,
   useInitialLocation,
@@ -69,6 +69,14 @@ export default function Home() {
           locationName={selectedLocation?.name ?? null}
           country={selectedLocation?.country ?? null}
           animationDelay={0}
+        />
+      </div>
+
+      {/* Layer 2b: Local time — below the location text but in front of globe */}
+      <div className="absolute inset-x-0 top-[12%] z-20 flex justify-center pointer-events-none px-4 pt-32 md:pt-40 lg:pt-48">
+        <LocalTime
+          localTime={weather?.current_weather?.time ?? null}
+          animationDelay={0.2}
         />
       </div>
 

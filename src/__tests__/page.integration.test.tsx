@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, afterAll, afterEach, describe, it, expect, vi } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -23,6 +23,9 @@ vi.mock("framer-motion", () => ({
     )),
     li: React.forwardRef(({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>, ref: React.Ref<HTMLLIElement>) => (
       <li ref={ref} {...filterMotionProps(props)}>{children}</li>
+    )),
+    p: React.forwardRef(({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>, ref: React.Ref<HTMLParagraphElement>) => (
+      <p ref={ref} {...filterMotionProps(props)}>{children}</p>
     )),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -90,8 +93,11 @@ describe("Home page integration", () => {
       expect(screen.getByRole("listbox")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("London")).toBeInTheDocument();
-    expect(screen.getByText("United Kingdom")).toBeInTheDocument();
+    // Scope to the listbox — LocationTitle may also show "United Kingdom"
+    // from the initial London fallback
+    const listbox = screen.getByRole("listbox");
+    expect(within(listbox).getByText("London")).toBeInTheDocument();
+    expect(within(listbox).getByText("United Kingdom")).toBeInTheDocument();
   });
 
   it("selects a location and shows title and weather data", async () => {
