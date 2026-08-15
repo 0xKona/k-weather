@@ -70,6 +70,32 @@ describe("WeatherCard", () => {
       expect(onToggleUnit).toHaveBeenCalledTimes(1);
     });
 
+    it("displays wind speed in mph when unit is mph", () => {
+      render(
+        <WeatherCard weather={mockWeather} isLoading={false} windSpeedUnit="mph" />
+      );
+      expect(screen.getByText("8 mph")).toBeInTheDocument();
+    });
+
+    it("is a clickable button that toggles the wind speed unit", async () => {
+      const user = userEvent.setup();
+      const onToggleWindSpeedUnit = vi.fn();
+      render(
+        <WeatherCard
+          weather={mockWeather}
+          isLoading={false}
+          onToggleWindSpeedUnit={onToggleWindSpeedUnit}
+        />
+      );
+
+      const windButton = screen.getByRole("button", {
+        name: /switch to miles per hour/i,
+      });
+      expect(windButton).toBeInTheDocument();
+      await user.click(windButton);
+      expect(onToggleWindSpeedUnit).toHaveBeenCalledTimes(1);
+    });
+
     it("displays wind speed", () => {
       render(<WeatherCard weather={mockWeather} isLoading={false} />);
       expect(screen.getByText(/12.3/)).toBeInTheDocument();

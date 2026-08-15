@@ -185,6 +185,31 @@ describe("Home page integration", () => {
     });
   });
 
+  it("defaults to km/h and toggles to mph on wind speed click", async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("12.3 km/h")).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: /switch to miles per hour/i })
+    );
+
+    expect(screen.getByText("8 mph")).toBeInTheDocument();
+    expect(window.localStorage.getItem("kweather.windspeed-unit")).toBe("mph");
+  });
+
+  it("restores the saved wind speed unit on load", async () => {
+    window.localStorage.setItem("kweather.windspeed-unit", "mph");
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("8 mph")).toBeInTheDocument();
+    });
+  });
+
   it("selects the current location when 'Use my location' is clicked", async () => {
     const geo = stubGeolocation();
     geo.getCurrentPosition.mockImplementation((success: (position: GeolocationPosition) => void) => {

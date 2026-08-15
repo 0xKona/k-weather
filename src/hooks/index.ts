@@ -7,4 +7,5 @@ export { useUrlLocation } from "./useUrlLocation";
 export { useSunPosition } from "./useSunPosition";
 export { useWebGLSupport } from "./useWebGLSupport";
 export { useTemperatureUnit } from "./useTemperatureUnit";
+export { useWindSpeedUnit } from "./useWindSpeedUnit";
 export type { SunPosition } from "./useSunPosition";

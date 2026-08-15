@@ -17,6 +17,7 @@ import {
   useSunPosition,
   useWebGLSupport,
   useTemperatureUnit,
+  useWindSpeedUnit,
   requestUserLocation,
 } from "@/hooks";
 import type { GeocodingResult } from "@/types";
@@ -88,6 +89,10 @@ export default function Home() {
   // Temperature unit preference (°C default) — toggled by clicking any
   // temperature, persisted to localStorage
   const { unit: temperatureUnit, toggleUnit: toggleTemperatureUnit } = useTemperatureUnit();
+
+  // Wind speed unit preference (km/h default) — toggled by clicking the
+  // wind speed, persisted to localStorage
+  const { unit: windSpeedUnit, toggleUnit: toggleWindSpeedUnit } = useWindSpeedUnit();
 
   // Visible loading placeholder for the weather panels. Rendered whenever
   // there's no data and no fetch in flight — including the server-rendered
@@ -166,6 +171,8 @@ export default function Home() {
             animationDelay={1.2}
             unit={temperatureUnit}
             onToggleUnit={toggleTemperatureUnit}
+            windSpeedUnit={windSpeedUnit}
+            onToggleWindSpeedUnit={toggleWindSpeedUnit}
           />
         </div>
         <div className="pointer-events-auto w-full max-w-md">

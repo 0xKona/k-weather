@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { glassPanel } from "@/lib/glass";
 import { formatTemperature, otherUnit, unitLabel, type TemperatureUnit } from "@/lib/temperature";
+import { formatWindSpeed, otherSpeedUnit, speedUnitLabel, type WindSpeedUnit } from "@/lib/speed";
 import type { WeatherResponse } from "@/types";
 import { WeatherIcon } from "./WeatherIcon";
 
@@ -16,6 +17,8 @@ interface WeatherCardProps {
   animationDelay?: number;
   unit?: TemperatureUnit;
   onToggleUnit?: () => void;
+  windSpeedUnit?: WindSpeedUnit;
+  onToggleWindSpeedUnit?: () => void;
 }
 
 // Extract the local "HH:MM" from an ISO local time string e.g. "2026-08-13T05:47"
@@ -59,6 +62,8 @@ export function WeatherCard({
   animationDelay = 0,
   unit = "celsius",
   onToggleUnit,
+  windSpeedUnit = "kph",
+  onToggleWindSpeedUnit,
 }: WeatherCardProps) {
   const shouldReduceMotion = useReducedMotion();
   const isDay = weather?.current_weather.is_day === 1;
@@ -116,10 +121,16 @@ export function WeatherCard({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={onToggleWindSpeedUnit}
+                  title={`Switch to ${speedUnitLabel(otherSpeedUnit(windSpeedUnit))}`}
+                  aria-label={`Switch to ${speedUnitLabel(otherSpeedUnit(windSpeedUnit))}`}
+                  className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-opacity hover:opacity-75"
+                >
                   <Wind className="size-4" aria-hidden="true" />
-                  <span>{weather.current_weather.windspeed} km/h</span>
-                </div>
+                  <span>{formatWindSpeed(weather.current_weather.windspeed, windSpeedUnit)}</span>
+                </button>
               </div>
 
               {weather.daily?.sunrise?.[0] && weather.daily?.sunset?.[0] && (
