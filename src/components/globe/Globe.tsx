@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, Suspense, useEffect, useCallback } from "react";
 import { useTexture, shaderMaterial } from "@react-three/drei";
 import { useFrame, extend } from "@react-three/fiber";
 import * as THREE from "three";
@@ -11,10 +11,10 @@ interface GlobeProps {
   timezone?: string | null;
 }
 
-// Fresnel-based atmospheric glow — bright at the horizon edge, transparent in the centre
+// ─── Atmosphere shader ────────────────────────────────────────────────────────
+
 const AtmosphereMaterial = shaderMaterial(
   { atmosphereColor: new THREE.Color(0x2266ff), intensity: 0.8 },
-  // Vertex shader — passes the normal and view direction to the fragment shader
   /*glsl*/ `
     varying vec3 vNormal;
     varying vec3 vViewDir;
@@ -25,7 +25,6 @@ const AtmosphereMaterial = shaderMaterial(
       gl_Position = projectionMatrix * worldPos;
     }
   `,
-  // Fragment shader — fresnel: bright at grazing angles, transparent face-on
   /*glsl*/ `
     uniform vec3 atmosphereColor;
     uniform float intensity;
@@ -40,7 +39,6 @@ const AtmosphereMaterial = shaderMaterial(
 
 extend({ AtmosphereMaterial });
 
-// Teach TypeScript about the extended JSX element
 declare module "@react-three/fiber" {
   interface ThreeElements {
     atmosphereMaterial: React.PropsWithChildren<{
@@ -54,55 +52,109 @@ declare module "@react-three/fiber" {
   }
 }
 
-// Textured Earth sphere with normal map depth, specular reflectivity, and cloud layer.
-// Earth rotation logic lives in GlobeScene — this component owns only appearance.
-export function Globe({ radius = 2, timezone = null }: GlobeProps) {
-  const cloudsRef = useRef<THREE.Mesh>(null);
-  const nightRef  = useRef<THREE.MeshBasicMaterial>(null);
-  const isNight   = useIsNight(timezone);
+// ─── Detail map upgrade ───────────────────────────────────────────────────────
+// Suspends until normal/specular/night/clouds are ready, then writes them onto
+// the already-visible material refs. Rendered inside its own Suspense so it
+// doesn't block the initial globe render.
 
-  const [dayMap, nightMap, normalMap, specularMap, cloudsMap] = useTexture([
-    "/textures/8k_earth_daymap.jpg",
+interface DetailMapsProps {
+  surfaceRef: React.RefObject<THREE.MeshPhongMaterial | null>;
+  nightMatRef: React.RefObject<THREE.MeshBasicMaterial | null>;
+  cloudsMatRef: React.RefObject<THREE.MeshPhongMaterial | null>;
+  onLoaded: () => void;
+}
+
+function DetailMaps({ surfaceRef, nightMatRef, cloudsMatRef, onLoaded }: DetailMapsProps) {
+  const [nightMap, normalMap, specularMap, cloudsMap] = useTexture([
     "/textures/8k_earth_nightmap.jpg",
     "/textures/8k_earth_normal_map.jpg",
     "/textures/8k_earth_specular_map.jpg",
     "/textures/8k_earth_clouds.jpg",
   ]);
 
+  // Apply textures with normalScale and cloud opacity starting at 0 — animated up in useFrame
+  // hasApplied guard ensures this never runs more than once even if deps re-evaluate
+  const hasApplied = useRef(false);
+  useEffect(() => {
+    if (hasApplied.current) return;
+    hasApplied.current = true;
+
+    if (surfaceRef.current) {
+      surfaceRef.current.normalMap = normalMap;
+      surfaceRef.current.normalScale.set(0, 0);
+      surfaceRef.current.specularMap = specularMap;
+      surfaceRef.current.needsUpdate = true;
+    }
+    if (nightMatRef.current) {
+      nightMatRef.current.map = nightMap;
+      nightMatRef.current.needsUpdate = true;
+    }
+    if (cloudsMatRef.current) {
+      cloudsMatRef.current.map = cloudsMap;
+      cloudsMatRef.current.alphaMap = cloudsMap;
+      cloudsMatRef.current.opacity = 0;
+      cloudsMatRef.current.needsUpdate = true;
+    }
+    onLoaded();
+  }, [normalMap, specularMap, nightMap, cloudsMap, surfaceRef, nightMatRef, cloudsMatRef, onLoaded]);
+
+  return null;
+}
+
+// ─── Globe component ──────────────────────────────────────────────────────────
+
+export function Globe({ radius = 2, timezone = null }: GlobeProps) {
+  const cloudsRef    = useRef<THREE.Mesh>(null);
+  const nightRef     = useRef<THREE.MeshBasicMaterial>(null);
+  const surfaceRef   = useRef<THREE.MeshPhongMaterial>(null);
+  const cloudsMatRef = useRef<THREE.MeshPhongMaterial>(null);
+  const isNight      = useIsNight(timezone);
+  const detailLoaded = useRef(false);
+  const onLoaded = useCallback(() => { detailLoaded.current = true; }, []);
+
+  // Phase 1: only daymap — suspends quickly, globe appears fast
+  const [dayMap] = useTexture(["/textures/8k_earth_daymap.jpg"]);
+
   useFrame((_, delta) => {
-    // Cloud drift — independent of earth rotation
     if (cloudsRef.current) {
       cloudsRef.current.rotation.y += delta * 0.003;
     }
-
-    // Fade night layer in/out — ~1.5s transition
     if (nightRef.current) {
       const target = isNight ? 1.0 : 0.0;
       nightRef.current.opacity += (target - nightRef.current.opacity) * Math.min(1, delta * 0.7);
+    }
+
+    // Fade in normal map depth and clouds after detail textures load
+    if (detailLoaded.current) {
+      if (surfaceRef.current) {
+        const current = surfaceRef.current.normalScale.x;
+        const next = current + (5 - current) * Math.min(1, delta * 1.5);
+        surfaceRef.current.normalScale.set(next, next);
+      }
+      if (cloudsMatRef.current && cloudsMatRef.current.opacity < 0.5) {
+        cloudsMatRef.current.opacity = Math.min(0.5, cloudsMatRef.current.opacity + delta * 0.6);
+      }
     }
   });
 
   return (
     <>
-      {/* Earth surface — original meshPhongMaterial, untouched from committed state */}
+      {/* Earth surface — visible immediately with daymap only */}
       <mesh>
         <sphereGeometry args={[radius, 64, 64]} />
         <meshPhongMaterial
+          ref={surfaceRef}
           map={dayMap}
-          normalMap={normalMap}
-          normalScale={new THREE.Vector2(5, 5)}
-          specularMap={specularMap}
           specular={new THREE.Color(0x4499cc)}
           shininess={18}
         />
       </mesh>
 
-      {/* Night layer — city lights fade in additively when isNight, invisible otherwise */}
+      {/* Night layer — invisible until detail maps load and isNight */}
       <mesh>
         <sphereGeometry args={[radius + 0.01, 64, 64]} />
         <meshBasicMaterial
           ref={nightRef}
-          map={nightMap}
           transparent
           opacity={0}
           depthWrite={false}
@@ -110,12 +162,11 @@ export function Globe({ radius = 2, timezone = null }: GlobeProps) {
         />
       </mesh>
 
-      {/* Cloud layer — sits just above the surface, drifts independently */}
+      {/* Cloud layer — invisible until detail maps load */}
       <mesh ref={cloudsRef}>
         <sphereGeometry args={[radius + 0.15, 64, 64]} />
         <meshPhongMaterial
-          map={cloudsMap}
-          alphaMap={cloudsMap}
+          ref={cloudsMatRef}
           transparent
           opacity={0.5}
           depthWrite={false}
@@ -123,7 +174,7 @@ export function Globe({ radius = 2, timezone = null }: GlobeProps) {
         />
       </mesh>
 
-      {/* Atmospheric glow — fresnel shader renders only the horizon ring */}
+      {/* Atmospheric glow — no texture dependency, always visible */}
       <mesh>
         <sphereGeometry args={[radius + 0.2, 64, 64]} />
         <atmosphereMaterial
@@ -135,6 +186,16 @@ export function Globe({ radius = 2, timezone = null }: GlobeProps) {
           side={THREE.BackSide}
         />
       </mesh>
+
+      {/* Phase 2: load detail maps in background, upgrade materials when ready */}
+      <Suspense fallback={null}>
+        <DetailMaps
+          surfaceRef={surfaceRef}
+          nightMatRef={nightRef}
+          cloudsMatRef={cloudsMatRef}
+          onLoaded={onLoaded}
+        />
+      </Suspense>
     </>
   );
 }
