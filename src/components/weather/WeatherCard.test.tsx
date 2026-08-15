@@ -1,4 +1,6 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, it, expect, vi } from "vitest";
 import { WeatherCard } from "./WeatherCard";
 import type { WeatherResponse } from "@/types";
 
@@ -48,6 +50,24 @@ describe("WeatherCard", () => {
     it("displays temperature with degree symbol and unit", () => {
       render(<WeatherCard weather={mockWeather} isLoading={false} />);
       expect(screen.getByText("18.5°C")).toBeInTheDocument();
+    });
+
+    it("displays fahrenheit when unit is fahrenheit", () => {
+      render(<WeatherCard weather={mockWeather} isLoading={false} unit="fahrenheit" />);
+      expect(screen.getByText("65°F")).toBeInTheDocument();
+    });
+
+    it("is a clickable button that toggles the unit", async () => {
+      const user = userEvent.setup();
+      const onToggleUnit = vi.fn();
+      render(
+        <WeatherCard weather={mockWeather} isLoading={false} onToggleUnit={onToggleUnit} />
+      );
+
+      const tempButton = screen.getByRole("button", { name: /switch to fahrenheit/i });
+      expect(tempButton).toBeInTheDocument();
+      await user.click(tempButton);
+      expect(onToggleUnit).toHaveBeenCalledTimes(1);
     });
 
     it("displays wind speed", () => {

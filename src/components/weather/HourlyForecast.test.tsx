@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { describe, it, expect, vi } from "vitest";
 import { HourlyForecast } from "./HourlyForecast";
 import type { WeatherResponse } from "@/types";
 
@@ -101,15 +102,49 @@ describe("HourlyForecast", () => {
       expect(within(items[11]).getByText("21:00")).toBeInTheDocument();
     });
 
-    it("shows hourly temperatures with degree symbol", async () => {
+    it("shows hourly temperatures with the celsius unit", async () => {
       const user = userEvent.setup();
       render(<HourlyForecast weather={mockWeather} isLoading={false} />);
 
       await user.click(screen.getByRole("button", { name: /hourly forecast/i }));
 
       const items = screen.getAllByTestId("hour-item");
-      expect(within(items[0]).getByText("18.5°")).toBeInTheDocument();
-      expect(within(items[5]).getByText("22°")).toBeInTheDocument();
+      expect(within(items[0]).getByText("18.5°C")).toBeInTheDocument();
+      expect(within(items[5]).getByText("22°C")).toBeInTheDocument();
+    });
+
+    it("shows hourly temperatures converted to fahrenheit", async () => {
+      const user = userEvent.setup();
+      render(
+        <HourlyForecast weather={mockWeather} isLoading={false} unit="fahrenheit" />
+      );
+
+      await user.click(screen.getByRole("button", { name: /hourly forecast/i }));
+
+      const items = screen.getAllByTestId("hour-item");
+      expect(within(items[0]).getByText("65°F")).toBeInTheDocument();
+      expect(within(items[5]).getByText("72°F")).toBeInTheDocument();
+    });
+
+    it("toggles the unit when an hourly temperature is clicked", async () => {
+      const user = userEvent.setup();
+      const onToggleUnit = vi.fn();
+      render(
+        <HourlyForecast
+          weather={mockWeather}
+          isLoading={false}
+          onToggleUnit={onToggleUnit}
+        />
+      );
+
+      await user.click(screen.getByRole("button", { name: /hourly forecast/i }));
+
+      const items = screen.getAllByTestId("hour-item");
+      const firstTemp = within(items[0]).getByRole("button", {
+        name: /switch to fahrenheit/i,
+      });
+      await user.click(firstTemp);
+      expect(onToggleUnit).toHaveBeenCalledTimes(1);
     });
 
     it("renders a weather icon per hour", async () => {

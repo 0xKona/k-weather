@@ -16,6 +16,7 @@ import {
   useUrlLocation,
   useSunPosition,
   useWebGLSupport,
+  useTemperatureUnit,
   requestUserLocation,
 } from "@/hooks";
 import type { GeocodingResult } from "@/types";
@@ -83,6 +84,10 @@ export default function Home() {
   // WebGL support is probed client-side. Drives both the globe (Canvas only
   // mounts when true) and the "WebGL not supported" warning (only when false).
   const webglAvailable = useWebGLSupport();
+
+  // Temperature unit preference (°C default) — toggled by clicking any
+  // temperature, persisted to localStorage
+  const { unit: temperatureUnit, toggleUnit: toggleTemperatureUnit } = useTemperatureUnit();
 
   // Visible loading placeholder for the weather panels. Rendered whenever
   // there's no data and no fetch in flight — including the server-rendered
@@ -159,6 +164,8 @@ export default function Home() {
             weather={weather}
             isLoading={isLoading && !isResolving}
             animationDelay={1.2}
+            unit={temperatureUnit}
+            onToggleUnit={toggleTemperatureUnit}
           />
         </div>
         <div className="pointer-events-auto w-full max-w-md">
@@ -166,6 +173,8 @@ export default function Home() {
             weather={weather}
             isLoading={isLoading && !isResolving}
             animationDelay={1.4}
+            unit={temperatureUnit}
+            onToggleUnit={toggleTemperatureUnit}
           />
         </div>
       </div>

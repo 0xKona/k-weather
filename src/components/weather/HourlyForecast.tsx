@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { glassPanel } from "@/lib/glass";
+import { formatTemperature, otherUnit, unitLabel, type TemperatureUnit } from "@/lib/temperature";
 import type { WeatherResponse } from "@/types";
 import { WeatherIcon } from "./WeatherIcon";
 
@@ -14,6 +15,8 @@ interface HourlyForecastProps {
   weather: WeatherResponse | null;
   isLoading: boolean;
   animationDelay?: number;
+  unit?: TemperatureUnit;
+  onToggleUnit?: () => void;
 }
 
 const STRIP_ID = "hourly-forecast-strip";
@@ -37,7 +40,13 @@ function HourlyStripSkeleton() {
   );
 }
 
-export function HourlyForecast({ weather, isLoading, animationDelay = 0 }: HourlyForecastProps) {
+export function HourlyForecast({
+  weather,
+  isLoading,
+  animationDelay = 0,
+  unit = "celsius",
+  onToggleUnit,
+}: HourlyForecastProps) {
   const shouldReduceMotion = useReducedMotion();
   const [isExpanded, setIsExpanded] = useState(false);
   const isDay = weather?.current_weather.is_day === 1;
@@ -120,9 +129,15 @@ export function HourlyForecast({ weather, isLoading, animationDelay = 0 }: Hourl
                       isDay={hours.is_day[index] === 1}
                       className="size-6"
                     />
-                    <span className="text-sm font-medium tabular-nums">
-                      {hours.temperature_2m[index]}°
-                    </span>
+                    <button
+                      type="button"
+                      onClick={onToggleUnit}
+                      title={`Switch to ${unitLabel(otherUnit(unit))}`}
+                      aria-label={`Switch to ${unitLabel(otherUnit(unit))}`}
+                      className="text-sm font-medium tabular-nums cursor-pointer transition-opacity hover:opacity-75"
+                    >
+                      {formatTemperature(hours.temperature_2m[index], unit)}
+                    </button>
                   </div>
                 ))
               )}

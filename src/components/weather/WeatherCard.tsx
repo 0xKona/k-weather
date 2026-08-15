@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { glassPanel } from "@/lib/glass";
+import { formatTemperature, otherUnit, unitLabel, type TemperatureUnit } from "@/lib/temperature";
 import type { WeatherResponse } from "@/types";
 import { WeatherIcon } from "./WeatherIcon";
 
@@ -13,6 +14,8 @@ interface WeatherCardProps {
   weather: WeatherResponse | null;
   isLoading: boolean;
   animationDelay?: number;
+  unit?: TemperatureUnit;
+  onToggleUnit?: () => void;
 }
 
 // Extract the local "HH:MM" from an ISO local time string e.g. "2026-08-13T05:47"
@@ -50,7 +53,13 @@ function WeatherCardSkeleton() {
   );
 }
 
-export function WeatherCard({ weather, isLoading, animationDelay = 0 }: WeatherCardProps) {
+export function WeatherCard({
+  weather,
+  isLoading,
+  animationDelay = 0,
+  unit = "celsius",
+  onToggleUnit,
+}: WeatherCardProps) {
   const shouldReduceMotion = useReducedMotion();
   const isDay = weather?.current_weather.is_day === 1;
 
@@ -95,9 +104,15 @@ export function WeatherCard({ weather, isLoading, animationDelay = 0 }: WeatherC
                     <span className="text-sm text-muted-foreground">
                       {getConditionText(weather.current_weather.weathercode)}
                     </span>
-                    <span className="text-5xl font-bold text-foreground leading-tight">
-                      {weather.current_weather.temperature}°C
-                    </span>
+                    <button
+                      type="button"
+                      onClick={onToggleUnit}
+                      title={`Switch to ${unitLabel(otherUnit(unit))}`}
+                      aria-label={`Switch to ${unitLabel(otherUnit(unit))}`}
+                      className="text-5xl font-bold text-foreground leading-tight cursor-pointer transition-opacity hover:opacity-75"
+                    >
+                      {formatTemperature(weather.current_weather.temperature, unit)}
+                    </button>
                   </div>
                 </div>
 

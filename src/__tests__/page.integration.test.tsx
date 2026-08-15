@@ -104,6 +104,7 @@ afterEach(() => {
   server.resetHandlers();
   mockToastError.mockClear();
   mockToastSuccess.mockClear();
+  window.localStorage.clear();
   if (geolocationMock) {
     unstubGeolocation();
   }
@@ -157,6 +158,31 @@ describe("Home page integration", () => {
     render(<Home />);
 
     expect(screen.queryByTestId("webgl-warning")).not.toBeInTheDocument();
+  });
+
+  it("defaults to celsius and toggles to fahrenheit on temperature click", async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("18.5°C")).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: /switch to fahrenheit/i })
+    );
+
+    expect(screen.getByText("65°F")).toBeInTheDocument();
+    expect(window.localStorage.getItem("kweather.temperature-unit")).toBe("fahrenheit");
+  });
+
+  it("restores the saved temperature unit on load", async () => {
+    window.localStorage.setItem("kweather.temperature-unit", "fahrenheit");
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("65°F")).toBeInTheDocument();
+    });
   });
 
   it("selects the current location when 'Use my location' is clicked", async () => {
