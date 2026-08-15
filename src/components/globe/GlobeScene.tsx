@@ -153,8 +153,8 @@ export function GlobeScene({
           position: [0, 10, 12],
         }}
         dpr={[1, 2]}
-        gl={{ antialias: true, alpha: false }}
-        style={{ background: "#000000" }}
+        gl={{ antialias: true, alpha: true }}
+        style={{ background: "transparent", zIndex: 10 }}
       >
         {/* Low ambient — keeps shadow side visible without washing out normal maps */}
         <ambientLight intensity={0.35} />

@@ -48,7 +48,10 @@ export default function Home() {
 
   return (
     <main className="relative h-dvh w-full overflow-hidden">
-      {/* Layer 0: 3D Globe — full viewport canvas */}
+      {/* Black background layer - z-0 */}
+      <div className="absolute inset-0 bg-black" />
+
+      {/* Layer 1: 3D Globe — full viewport canvas */}
       <GlobeScene
         targetLat={selectedLocation?.latitude}
         targetLng={selectedLocation?.longitude}
@@ -56,17 +59,17 @@ export default function Home() {
         sunPosition={sunPosition}
       />
 
-      {/* Layer 1: Location typography — space area above the horizon */}
-      <div className="absolute inset-x-0 top-[15%] z-10 flex justify-center pointer-events-none px-4">
+      {/* Layer 2: Location typography — above background but behind globe */}
+      <div className="absolute inset-x-0 top-[12%] z-5 flex justify-center pointer-events-none px-4">
         <LocationTitle
           locationName={selectedLocation?.name ?? null}
           country={selectedLocation?.country ?? null}
-          animationDelay={0.75}
+          animationDelay={0}
         />
       </div>
 
-      {/* Layer 2: UI controls — weather card above input, input bottom-center */}
-      <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-4 p-4 md:p-6 pb-8 pointer-events-none">
+      {/* Layer 3: UI controls — weather card above input, input bottom-center */}
+      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-4 p-4 md:p-6 pb-8 pointer-events-none">
         <div className="pointer-events-auto">
           <WeatherCard
             weather={weather}

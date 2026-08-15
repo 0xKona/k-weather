@@ -35,11 +35,11 @@ export function LocationTitle({ locationName, country, animationDelay = 0 }: Loc
     : { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] as const, delay: animationDelay };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       <motion.div
         key={locationName}
         aria-hidden="true"
-        className="pointer-events-none select-none flex flex-col items-center text-center"
+        className="pointer-events-none select-none flex flex-col items-center text-center absolute inset-0"
         initial={variants.initial}
         animate={variants.animate}
         exit={variants.exit}
@@ -59,7 +59,7 @@ export function LocationTitle({ locationName, country, animationDelay = 0 }: Loc
         )}
 
         {/* City name — large, centred */}
-        <h1 className="text-7xl md:text-8xl lg:text-9xl font-black uppercase tracking-tight text-foreground/90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+        <h1 className="text-8xl md:text-9xl lg:text-[10rem] font-black uppercase tracking-tight text-foreground/90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
           {locationName.toUpperCase()}
         </h1>
       </motion.div>
