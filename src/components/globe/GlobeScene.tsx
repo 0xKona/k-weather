@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useRef, useEffect } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { Preload } from "@react-three/drei";
 import * as THREE from "three";
 import { Globe } from "./Globe";
@@ -19,17 +19,26 @@ const GLOBE_Y = -55;
 
 function GlobeGroup({ targetLat, targetLng }: { targetLat: number | null; targetLng: number | null }) {
   const groupRef = useRef<THREE.Group>(null);
+  // Holds the destination quaternion — updated when lat/lng changes, never set directly on the mesh
+  const targetQuaternion = useRef(new THREE.Quaternion());
 
   useEffect(() => {
-    if (!groupRef.current) return;
     if (targetLat == null || targetLng == null) {
-      groupRef.current.quaternion.identity();
+      targetQuaternion.current.identity();
       return;
     }
 
     const [qx, qy, qz, qw] = latLngToQuaternion(targetLat, targetLng);
-    groupRef.current.quaternion.set(qx, qy, qz, qw);
+    targetQuaternion.current.set(qx, qy, qz, qw);
   }, [targetLat, targetLng]);
+
+  // Each frame, slerp toward the target quaternion — gives smooth rotation animation
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+    // Speed factor: higher = faster. 2.5 gives ~0.4s to reach destination
+    const speed = 2.5;
+    groupRef.current.quaternion.slerp(targetQuaternion.current, 1 - Math.exp(-speed * delta));
+  });
 
   // Debug pin — scaled to globe radius
   const pinPosition = targetLat != null && targetLng != null
