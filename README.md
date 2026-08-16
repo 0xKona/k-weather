@@ -2,13 +2,13 @@
 
 # K-Weather
 
-A 3D weather globe — view Earth from orbit.
+An interactive 3D weather globe, rendered in the browser with Three.js.
 
 ## What is it?
 
-K-Weather is a weather app built around an interactive 3D globe. Rather than a static list of conditions, you get to see Earth from space, rotate to the place you care about, and watch the sun and day/night lighting follow the real world.
+K-Weather is a weather app built around an interactive **3D globe rendered with Three.js** (via React Three Fiber). Rather than a static list of conditions, you get to see Earth from space, rotate to the place you care about, and watch the sun and day/night lighting follow the real world.
 
-Pick any city in the world — or just hit **Use my location** — and the globe will spin to focus on that spot.
+Built with **Next.js** and **React**, it pulls live forecast data from **Open-Meteo** — no API keys or accounts required. Pick any city in the world — or just hit **Use my location** — and the globe will spin to focus on that spot.
 
 ## How it works
 
