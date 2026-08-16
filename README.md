@@ -44,3 +44,7 @@ npm run test:run   # run the test suite once
 npm run lint       # eslint
 npm run build      # production build (static export)
 ```
+
+## Additional Docs
+
+- [Deployment](docs/deployment.md) — how AWS Amplify hosts and deploys K-Weather
